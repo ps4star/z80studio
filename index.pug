@@ -36,7 +36,8 @@ html
 			div(id="process-viewer" style="border: 4px solid black; display: grid; grid-template-rows: 10% 15% 20% 20% 20% 20%; row-gap: 48px; width: 650px; height: 550px; overflow: scroll; overflow-x: hidden; margin-right: 24px;")
 				-
 					var registerNames = ["A", "B", "C", "D", "E", "H", "L", "F"];
-					var flagTable = ["S", "Z", "H", "P", "A", "C"];
+					var flagTable = ["S", "Z", "H", "P/V", "N", "C"];
+					var flagTable2 = ["S", "Z", "H", "P", "A", "C"];
 					var sixteenArray = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"];
 				div(style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;")
 					each register in registerNames
@@ -50,7 +51,7 @@ html
 							each flag in flagTable
 								td #{flag}
 						tr
-							each flag in flagTable
+							each flag in flagTable2
 								td
 									input(id=(flag.toLowerCase()+"-flag") type="text" value="0" style="width: 50%; text-align: center;" maxlength=1)
 				div(style="display: grid; grid-template-rows: 1fr 1fr;")

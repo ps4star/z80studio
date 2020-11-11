@@ -39,7 +39,6 @@ function doConversions(s) {
 	let ci = s.search(binstringPattern)
 	while(ci > -1) {
 		s = s.slice(0, ci) + lzfill(intToHex(parseInt(s.slice(ci + 1, ci + 9), 2)) + s.slice(ci + 9), 2).toUpperCase() + "h"
-		console.log(s)
 		ci = s.search(binstringPattern)
 	}
 	return s
@@ -100,7 +99,7 @@ function countBytes(ln) {
 	}
 	newln = derefLn(newln, rel)
 	let INSkeys = Object.keys(INS)
-	console.log(removeHexMarkers(newln))
+	console.log(newln)
 	for (let i = 0; i < INSkeys.length; i++) {
 		//console.log(removeHexMarkers(newln).replace("$", ""))
 		let s = INSkeys[i]
@@ -125,7 +124,7 @@ function grabSymbols() {
 
 	parseState.lines.forEach((line, idx) => {
 
-		if (line.length == 0 || line.split(" ").length == 1) return
+		if (line.length == 0 || (line.split(" ").length == 1 && !line.includes(":"))) return
 
 		//gets args and checks if op needs to be handled by 1st pass
 		let args = line.split(" ")
@@ -182,13 +181,12 @@ function bufferLineToRAM(line) {
 
 	let op = 0
 	Object.keys(INS).forEach(i => {
-		if (new RegExp(i.replace(/\*\*/, "[0-9a-fA-F]{4}").replace(/\*/, "[0-9a-fA-F]{2}")).test(sanitizedLine.replace(/\h/g, "").replace(/\$/g, ""))) {
+		if (new RegExp(i.replace(/\*\*/, "[0-9a-fA-F]{4}").replace(/\*/, "[0-9a-fA-F]{2}")).test(removeHexMarkers(sanitizedLine).replace(/\$/g, ""))) {
 
 			let temp = parseState.cLoadAddr
 
 			//op
 			for (var k = 1; k < INS[i].length; k++) {
-				console.log(INS[i])
 				bufferRAM(intToHex(INS[i][k]))
 			}
 			if (hxd.length >= 2) {

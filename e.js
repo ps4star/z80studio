@@ -198,6 +198,18 @@ function exec() {
 			setPC(make16(getP1(), getP2()))
 			eResult.isJump = true
 			break
+		case 0xFE:
+			//cp *
+			setAFlag(1)
+			let diff = getA() - getP1()
+			if (diff == 0) {
+				setZFlag(1)
+			} else {
+				setZFlag(0)
+			}
+			
+			addPC(2)
+			break
 	}
 
 	return eResult
