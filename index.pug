@@ -4,19 +4,28 @@ html
 		link(rel="stylesheet" href="flags.css" type="text/css")
 		link(rel="icon" href="Zilog.png" type="image/png")
 	body
-		div(id="s-cover" style="position: fixed; width: 100%; height: 100%; overflow: hidden; background-color: rgba(0,0,0,0.75); top: 0; left: 0; z-index: 20;" hidden)
-			div(id="more-menu" style="background-color: white; border: 5px solid black; border-radius: 5px; position: fixed; width: 50%; height: 85%; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; grid-template-rows: repeat(15, 11%); justify-items: center; row-gap: 5px; overflow: hidden; overflow-y: hidden;")
+		div(id="s-cover" style="display: none; position: fixed; width: 100%; height: 100%; overflow: hidden; background-color: rgba(0,0,0,0.75); top: 0; left: 0; z-index: 20;")
+			div(id="more-menu" style="background-color: white; border: 5px solid black; border-radius: 5px; position: fixed; width: 50%; height: 85%; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; grid-template-rows: repeat(15, 11%); justify-items: center; row-gap: 5px; overflow-y: scroll;")
 				button(style="position: absolute; left: 91%; top: 1%; width: 7.5%; height: 7.5%;" onclick="closeMoreMenu();") X
+
 				h1 CONFIG
-				div(style="dipslay: grid; grid-template-columns: 1fr 1fr;")
-					button(style="color: grey;" onclick="downCfgTemp();") Download Config Template
-					button(style="color: grey;" onclick="downCfgTempNoComments();") Download Config Template (No Comments)
+				button(style="color: grey;" onclick="downCfgTemp();") Download Config Template
+				button(style=" color: grey;" onclick="downCfgTempNoComments();") Download Config (No Comments)
 				button(style="color: blue;" onclick="importCfg();") Import Config
+
 				h1 HELP
-				button(style="color: green;" onclick="openHelp();") Help
+				button(style="color: green;" onclick="openHelp();") How to Use This Menu
+				button(style="color: green;" onclick="openDocs();") BASIC Docs
+				button(style="color: green;" onclick="openClrhome();") Z80 Instruction Set
+
 				h1 SAVE/LOAD PROGRAM
-				button(style="color: blue;" onclick="savePrgm();") Save
-				button(style="color: red;" onclick="loadPrgm();") Load
+				button(style="color: blue;" onclick="savePrgm();") Save Editor (.txt)
+				button(style="color: blue;" onclick="saveRAM();")  Save ASM (.asm)
+				button(style="color: red;" onclick="loadPrgm();") Load Editor
+
+
+
+				div(style="width: 100%; height: 100%;")
 		div(id="toolbar" style="position: fixed; width: 100%; height: 5%; top: 1.2%; display: grid; grid-template-columns: 158.85px 158.85px 158.85px 158.85px; column-gap: 5px;")
 			button(class="tooltip" id="go-button" style="color: green; font-size: 24px;") Go<span class="tooltiptext">Hotkey: F2</span>
 			button(class="tooltip" id="step-button" style="color: blue; font-size: 24px;") Step<span class="tooltiptext">Hotkey: F4</span>

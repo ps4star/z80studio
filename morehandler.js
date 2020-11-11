@@ -1,12 +1,14 @@
 var sCover = document.getElementById("s-cover")
 
 function popupMoreMenu() {
-	sCover.hidden = false
+	sCover.style.display = "block"
+	sCover.focus()
 	editor.blur()
 }
 
 function closeMoreMenu() {
-	sCover.hidden = true
+	sCover.style.display = "none"
+	sCover.blur()
 	editor.focus()
 }
 
@@ -33,4 +35,9 @@ function closeMoreMenu() {
 function downCfgTemp() {
 	//download config template
 	download('template.json', 'template.json')
+}
+
+function downCfgNoComments() {
+	//download config template w/o comments
+	download('template_nocomments.json', 'template_nocomments.json')
 }

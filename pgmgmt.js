@@ -29,6 +29,10 @@ function hexToInt(s) {
 	return parseInt(s, 16)
 }
 
+function make16(a, b) {
+	return (a * 256) + b
+}
+
 function getBit(i, b) {
 	//gets specified bit of int i
 	return parseInt(lzfill(i.toString(2), 8).charAt(7 - b))
@@ -39,6 +43,11 @@ function modifyBit(h, pos, newBit) {
 	//7 is lowest, 0 is highest
 	let binNumber = lzfill(h.toString(2), 8)
 	return parseInt(modifyCharAt(binNumber, (7 - pos), newBit), 2)
+}
+
+//Handles NOT operations (used for cpl)
+function inv8bit(n) {
+	return (255 - n)
 }
 
 //Converts Uint8 to Int8 (unsigned -> signed)
@@ -94,7 +103,13 @@ function initSys() {
 }
 
 //general register mgmt (shad, etc.)
-function swapShad() {
+function swapSingleShad(name) {
+	let tN = sys[name]
+	sys[name] = sys[name+"_"]
+	sys[name+"_"] = tN
+}
+
+function swapAllShad() {
 	let tA = sys.A
 	let tB = sys.B
 	let tC = sys.C
@@ -172,6 +187,23 @@ function getIY() {
 	return sys.IY
 }
 
+//16 bit gets
+function getAF() {
+	return make16(sys.A, sys.F)
+}
+
+function getBC() {
+	return make16(sys.B, sys.C)
+}
+
+function getDE() {
+	return make16(sys.D, sys.E)
+}
+
+function getHL() {
+	return make16(sys.H, sys.L)
+}
+
 //register update functions
 function setA(b) {
 	sys.A = b
@@ -240,23 +272,30 @@ function setCFlag(bit) {
 }
 
 //16-bit registers
-function getRAMatBC() {
-	return hexToInt(intToHex(sys.RAM[B]) + intToHex(sys.RAM[C]))
+function get16reg(name) {
+	return make16(sys[name.charAt(0)], sys[name.charAt(1)])
+}
+
+function getRAMatReg(name) {
+	return make16(sys.RAM[name.charAt(0)], sys.RAM[name.charAt(1)])
 }
 
 //direct reg set instructions
 function setReg(name, val) {
 	sys[name] = val
-	registers[name].value = lzfill(intToHex(val), 2)
+	registers[name].value = lzfill(val.toString(16), 2)
 }
 
 function set16reg(name, val) {
-	let asStr = intToHex(val)
-	sys[name.charAt(0)] = hexToInt(asStr.slice(0, 2))
-	sys[name.charAt(1)] = hexToInt(asStr.slice(2, 4))
+	let asStr = val.toString(16)
+	let c0 = name.charAt(0)
+	let c1 = name.charAt(1)
 
-	registers[name.charAt(0)].value = lzfill(asStr.slice(0, 2), 2)
-	registers[name.charAt(1)].value = lzfill(asStr.slice(2, 4), 2)
+	sys[c0] = Math.floor(val / 256)
+	sys[c1] = val % 256
+
+	registers[c0].value = lzfill(sys[c0].toString(16).slice(0, 2), 2)
+	registers[c1].value = lzfill(sys[c1].toString(16), 2)
 }
 
 //SP mgmt instructions
@@ -267,13 +306,13 @@ function pushReg(r) {
 	loadRAMtoTable()
 }
 
-function getSPdataAsString() {
+function getSPdata() {
 	//gets data on top of stack
-	return (intToHex(sys.RAM[sys.SP + 1]) + intToHex(sys.RAM[sys.SP + 2]))
+	return make16(sys.RAM[sys.SP + 1], sys.RAM[sys.SP + 2])
 }
 
 function popStack(r) {
-	set16reg(r, getSPdataAsString())
+	set16reg(r, getSPdata())
 	sys.SP += 2
 }
 
@@ -296,23 +335,29 @@ function subReg(name, val) {
 }
 
 function add16reg(name, value) {
-	let higherPart = sys[name.charAt(0)]
-	let lowerPart = sys[name.charAt(1)]
+	let c0 = name.charAt(0)
+	let c1 = name.charAt(1)
 
-	let totalValue = hexToInt(intToHex(higherPart) + intToHex(lowerPart))
+	let higherPart = sys[c0]
+	let lowerPart = sys[c1]
+
+	let totalValue = make16(higherPart, lowerPart)
 	totalValue = lzfill(intToHex((totalValue + value) % 65536), 4)
 
-	sys[name.charAt(0)] = totalValue.slice(0, 2)
-	registers[name.charAt(0)].value = lzfill(totalValue.slice(0, 2), 2)
-	sys[name.charAt(1)] = totalValue.slice(2, 4)
-	registers[name.charAt(1)].value = lzfill(totalValue.slice(2, 4), 2)
+	let h = totalValue.slice(0, 2)
+	let l = totalValue.slice(2, 4)
+
+	sys[c0] = h
+	registers[c0].value = h
+	sys[c1] = l
+	registers[c1].value = l
 }
 
 function sub16reg(name, value) {
 	let higherPart = sys[name.charAt(0)]
 	let lowerPart = sys[name.charAt(1)]
 
-	let totalValue = hexToInt(intToHex(higherPart) + intToHex(lowerPart))
+	let totalValue = make16(higherPart, lowerPart)
 	let newIntValue = totalValue - value
 	if (newIntValue < 0) {
 		newIntValue = (0x10000 - Math.abs(newIntValue))

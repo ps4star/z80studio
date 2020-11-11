@@ -15,6 +15,7 @@
 		//No ports are bound by default, so here are some examples:
 
 		/*
+
 		//Audio port example
 		"00" : {
 
@@ -28,6 +29,7 @@
 			"bitDepth" : 8
 
 		}
+		
 		*/
 
 		/*
@@ -48,10 +50,11 @@
 
 				//(OPTIONAL) Specifies the context (type) of this port's data (e.g. Is it the higher part of a 16-bit int, with the lower part being provided by a 2nd controller port? Is it a boolean? Is it signed?). This field is usually "byte" (unsigned 8-bit int). Defaults to "byte" if not specified.
 				//Possible values:
-				//	- "byte" (unsigned 8-bit int, or lower part of a Uint16)
-				//	- "lower" (same as "byte" but more context-ey/human-readable)
+				//	- "byte"   (unsigned 8-bit int, or lower part of a Uint16)
+				//	- "lower"  (same as "byte" but more context-ey/human-readable)
 				//	- "higher" (higher part of a Uint16)
 				//	- "signed" (signed 8-bit int)
+				//	- "bool"   (if 0x00, evaluates to false, otherwise true)
 				"type" : "byte"
 
 				//Now bytes written to this port will instead modify the "bitDepth" of port 00! 
