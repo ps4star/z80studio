@@ -1,0 +1,70 @@
+@font-face {
+	font-family: "Monaco";
+	src: url("monaco.ttf");
+}
+
+* {
+	font-family: "Monaco";
+}
+
+h1 {
+	text-align: center;
+}
+
+table, th, td, tr {
+	text-align: center;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+td {
+	background-color: #d3d3d3;
+}
+
+input[type=text] {
+	text-transform: uppercase;
+}
+
+.stepHL {
+  position:absolute;
+  background:rgba(0,0,255,0.6);
+  z-index:20
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  font-size: 12px;
+  width: 60px;
+  background-color: white;
+  color: #000;
+  text-align: center;
+  border: 1px solid black;
+ 
+  position: absolute;
+  top: 8px;
+  z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+	transition-delay: 700ms;
+	visibility: visible;
+}
+
+#more-menu button {
+	font-size: 24px;
+	width: 75%;
+}
