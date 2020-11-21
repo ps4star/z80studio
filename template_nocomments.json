@@ -1,0 +1,9 @@
+{
+	"envr" : {
+		"jpLimit" : -1,
+		"onReadonlyWrite" : "error",
+		"forbiddenRAM" : [],
+		"autoDownloads" : []
+	},
+	"ports" : {}
+}

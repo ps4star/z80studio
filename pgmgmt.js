@@ -1,14 +1,16 @@
 //string manip functions
 function lzfill(s, digits) {
-	while (s.length < digits) {
+	while (s.length < digits)
 		s = "0" + s
-	}
 	return s
 }
 
-function modifyCharAt(str, index, chr) {
-    if (index > str.length-1) return str
-    return str.substring(0,index) + chr + str.substring(index+1)
+function stringToASCII(str) {
+    var bytes = []
+    for(var i = 0; i < str.length; i++) {
+        bytes.push(str.charCodeAt(i))
+    }
+    return bytes
 }
 
 //this is used for the swap instruction
@@ -33,16 +35,20 @@ function make16(a, b) {
 	return (a * 256) + b
 }
 
-function getBit(i, b) {
-	//gets specified bit of int i
-	return parseInt(lzfill(i.toString(2), 8).charAt(7 - b))
+function getBit(i, n) {
+	return Number(!!(i&(2**n)))
 }
 
-function modifyBit(h, pos, newBit) {
-	//takes an integer (hex rep.) and modifies specified bit
-	//7 is lowest, 0 is highest
-	let binNumber = lzfill(h.toString(2), 8)
-	return parseInt(modifyCharAt(binNumber, (7 - pos), newBit), 2)
+function setBit(i, n) {
+	return i|2**n
+}
+
+function resetBit(i, n) {
+	return i&~(2**n)
+}
+
+function modifyBit(i, n, b) {
+	return b ? setBit(i, n) : resetBit(i, n)
 }
 
 //Handles NOT operations (used for cpl)
@@ -66,6 +72,13 @@ var cHighlight = [0, 0]
 
 const RAMsize = 65536
 
+var parsedINS = {}
+
+//constructs a 2nd instruction set object which is regex-compatible
+Object.keys(INS).forEach(k => {
+	parsedINS[k.replace(/\*/g, "[0-9a-fA-F]{2}")] = INS[k]
+})
+
 var sys = {}
 
 function initSys() {
@@ -74,215 +87,254 @@ function initSys() {
 		RAM : new Uint8Array(new ArrayBuffer(RAMsize)),
 
 		//Registers
-		A : 0,
-		B : 0,
-		C : 0,
-		D : 0,
-		E : 0,
-		F : 0,
-		H : 0,
-		L : 0,
+		A : new Uint8Array(new ArrayBuffer(1)),
+		B : new Uint8Array(new ArrayBuffer(1)),
+		C : new Uint8Array(new ArrayBuffer(1)),
+		D : new Uint8Array(new ArrayBuffer(1)),
+		E : new Uint8Array(new ArrayBuffer(1)),
+		F : new Uint8Array(new ArrayBuffer(1)),
+		H : new Uint8Array(new ArrayBuffer(1)),
+		L : new Uint8Array(new ArrayBuffer(1)),
 
 		//Shadow Registers
-		A_ : 0,
-		B_ : 0,
-		C_ : 0,
-		D_ : 0,
-		E_ : 0,
-		F_ : 0,
-		H_ : 0,
-		L_ : 0,
+		A_ : new Uint8Array(new ArrayBuffer(1)),
+		B_ : new Uint8Array(new ArrayBuffer(1)),
+		C_ : new Uint8Array(new ArrayBuffer(1)),
+		D_ : new Uint8Array(new ArrayBuffer(1)),
+		E_ : new Uint8Array(new ArrayBuffer(1)),
+		F_ : new Uint8Array(new ArrayBuffer(1)),
+		H_ : new Uint8Array(new ArrayBuffer(1)),
+		L_ : new Uint8Array(new ArrayBuffer(1)),
 
 		//Other
-		SP : 65535,
-		PC : 0,
-		IX : 0,
-		IY : 0
+		SP : new Uint16Array(new ArrayBuffer(2)),
+		PC : new Uint16Array(new ArrayBuffer(2)),
+		IX : new Uint16Array(new ArrayBuffer(2)),
+		IY : new Uint16Array(new ArrayBuffer(2)),
 
+		//Ports
+		ports : {}
 	}
 }
 
 //general register mgmt (shad, etc.)
 function swapSingleShad(name) {
-	let tN = sys[name]
-	sys[name] = sys[name+"_"]
-	sys[name+"_"] = tN
+	let tN = sys[name][0]
+	sys[name][0] = sys[name+"_"][0]
+	sys[name+"_"][0] = tN
 }
 
 function swapAllShad() {
-	let tA = sys.A
-	let tB = sys.B
-	let tC = sys.C
-	let tD = sys.D
-	let tE = sys.E
-	let tF = sys.F
-	let tH = sys.H
-	let tL = sys.L
+	let tB = sys.B[0]
+	let tC = sys.C[0]
+	let tD = sys.D[0]
+	let tE = sys.E[0]
+	let tH = sys.H[0]
+	let tL = sys.L[0]
 
-	sys.A = sys.A_
-	sys.B = sys.B_
-	sys.C = sys.C_
-	sys.D = sys.D_
-	sys.E = sys.E_
-	sys.F = sys.F_
-	sys.H = sys.H_
-	sys.L = sys.L_
+	sys.B[0] = sys.B_[0]
+	sys.C[0] = sys.C_[0]
+	sys.D[0] = sys.D_[0]
+	sys.E[0] = sys.E_[0]
+	sys.H[0] = sys.H_[0]
+	sys.L[0] = sys.L_[0]
 
-	sys.A_ = tA
-	sys.B_ = tB
-	sys.C_ = tC
-	sys.D_ = tD
-	sys.E_ = tE
-	sys.F_ = tF
-	sys.H_ = tH
-	sys.L_ = tL
+	sys.B_[0] = tB
+	sys.C_[0] = tC
+	sys.D_[0] = tD
+	sys.E_[0] = tE
+	sys.H_[0] = tH
+	sys.L_[0] = tL
 }
 
 //register get functions
 function getA() {
-	return sys.A
+	return sys.A[0]
 }
 
 function getB() {
-	return sys.B
+	return sys.B[0]
 }
 
 function getC() {
-	return sys.C
+	return sys.C[0]
 }
 
 function getD() {
-	return sys.D
+	return sys.D[0]
 }
 
 function getE() {
-	return sys.E
+	return sys.E[0]
 }
 
 function getH() {
-	return sys.H
+	return sys.H[0]
 }
 
 function getL() {
-	return sys.L
+	return sys.L[0]
 }
 
 function getF() {
-	return sys.F
+	return sys.F[0]
 }
 
 function getPC() {
-	return sys.PC
+	return sys.PC[0]
 }
 
 function getSP() {
-	return sys.SP
+	return sys.SP[0]
 }
 
 function getIX() {
-	return sys.IX
+	return sys.IX[0]
 }
 
 function getIY() {
-	return sys.IY
+	return sys.IY[0]
 }
 
 //16 bit gets
 function getAF() {
-	return make16(sys.A, sys.F)
+	return make16(sys.A[0], sys.F[0])
 }
 
 function getBC() {
-	return make16(sys.B, sys.C)
+	return make16(sys.B[0], sys.C[0])
 }
 
 function getDE() {
-	return make16(sys.D, sys.E)
+	return make16(sys.D[0], sys.E[0])
 }
 
 function getHL() {
-	return make16(sys.H, sys.L)
+	return make16(sys.H[0], sys.L[0])
+}
+
+//flag gets
+function getSFlag() {
+	return getBit(sys.F[0], 7)
+}
+
+function getZFlag() {
+	return getBit(sys.F[0], 6)
+}
+
+function getHFlag() {
+	return getBit(sys.F[0], 4)
+}
+
+function getPFlag() {
+	return getBit(sys.F[0], 2)
+}
+
+function getNFlag() {
+	return getBit(sys.F[0], 1)
+}
+
+function getCFlag() {
+	return getBit(sys.F[0], 0)
 }
 
 //register update functions
 function setA(b) {
-	sys.A = b
-	registers.A.value = lzfill(intToHex(sys.A), 2)
+	sys.A[0] = b
+	registers.A.value = lzfill(intToHex(sys.A[0]), 2)
 }
 
 function setB(b) {
-	sys.B = b
-	registers.B.value = lzfill(intToHex(sys.B), 2)
+	sys.B[0] = b
+	registers.B.value = lzfill(intToHex(sys.B[0]), 2)
 }
 
 function setC(b) {
-	sys.C = b
-	registers.C.value = lzfill(intToHex(sys.C), 2)
+	sys.C[0] = b
+	registers.C.value = lzfill(intToHex(sys.C[0]), 2)
 }
 
 function setD(b) {
-	sys.D = b
-	registers.D.value = lzfill(intToHex(sys.D), 2)
+	sys.D[0] = b
+	registers.D.value = lzfill(intToHex(sys.D[0]), 2)
 }
 
 function setE(b) {
-	sys.E = b
-	registers.E.value = lzfill(intToHex(sys.E), 2)
+	sys.E[0] = b
+	registers.E.value = lzfill(intToHex(sys.E[0]), 2)
 }
 
 function setH(b) {
-	sys.H = b
-	registers.H.value = lzfill(intToHex(sys.H), 2)
+	sys.H[0] = b
+	registers.H.value = lzfill(intToHex(sys.H[0]), 2)
 }
 
 function setL(b) {
-	sys.L = b
-	registers.L.value = lzfill(intToHex(sys.L), 2)
+	sys.L[0] = b
+	registers.L.value = lzfill(intToHex(sys.L[0]), 2)
+}
+
+function addHL(n) {
+	sys.L[0] += n
+	if (sys.L[0] == 0) {
+		sys.H[0]++
+	}
+
+	registers.H.value = lzfill(intToHex(sys.H[0]), 2)
+	registers.L.value = lzfill(intToHex(sys.L[0]), 2)
 }
 
 //flag update functions (also modify F)
 function setSFlag(bit) {
-	sys.F = modifyBit(sys.F, 7, bit)
+	sys.F[0] = modifyBit(sys.F[0], 7, bit)
 	flags.S.value = bit.toString()
 }
 
 function setZFlag(bit) {
-	sys.F = modifyBit(sys.F, 6, bit)
+	sys.F[0] = modifyBit(sys.F[0], 6, bit)
 	flags.Z.value = bit.toString()
 }
 
 function setHFlag(bit) {
-	sys.F = modifyBit(sys.F, 4, bit)
+	sys.F[0] = modifyBit(sys.F[0], 4, bit)
 	flags.H.value = bit.toString()
 }
 
 function setPFlag(bit) {
-	sys.F = modifyBit(sys.F, 2, bit)
+	sys.F[0] = modifyBit(sys.F[0], 2, bit)
 	flags.P.value = bit.toString()
 }
 
-function setAFlag(bit) {
-	sys.F = modifyBit(sys.F, 1, bit)
-	flags.A.value = bit.toString()
+function setNFlag(bit) {
+	sys.F[0] = modifyBit(sys.F[0], 1, bit)
+	flags.N.value = bit.toString()
 }
 
 function setCFlag(bit) {
-	sys.F = modifyBit(sys.F, 0, bit)
+	sys.F[0] = modifyBit(sys.F[0], 0, bit)
 	flags.C.value = bit.toString()
 }
 
+function updateF() {
+	registers.F.value = lzfill(sys.F[0].toString(16), 2)
+}
+
 //16-bit registers
-function get16reg(name) {
-	return make16(sys[name.charAt(0)], sys[name.charAt(1)])
+function getReg16(name) {
+	return make16(sys[name.charAt(0)][0], sys[name.charAt(1)][0])
+}
+
+function getRAMat(val) {
+	return sys.RAM[val]
 }
 
 function getRAMatReg(name) {
-	return make16(sys.RAM[name.charAt(0)], sys.RAM[name.charAt(1)])
+	return sys.RAM[sys[name.charAt(0)][0]*256 + sys[name.charAt(1)][0]]
 }
 
 //direct reg set instructions
 function setReg(name, val) {
-	sys[name] = val
+	sys[name][0] = val
 	registers[name].value = lzfill(val.toString(16), 2)
 }
 
@@ -291,55 +343,92 @@ function set16reg(name, val) {
 	let c0 = name.charAt(0)
 	let c1 = name.charAt(1)
 
-	sys[c0] = Math.floor(val / 256)
-	sys[c1] = val % 256
+	sys[c0][0] = Math.floor(val / 256)
+	sys[c1][0] = val % 256
 
-	registers[c0].value = lzfill(sys[c0].toString(16).slice(0, 2), 2)
-	registers[c1].value = lzfill(sys[c1].toString(16), 2)
+	registers[c0].value = lzfill(sys[c0][0].toString(16).slice(0, 2), 2)
+	registers[c1].value = lzfill(sys[c1][0].toString(16), 2)
+}
+
+function setSP(val) {
+	sys.SP[0] = val
+	registers16.SP.value = lzfill(sys.SP[0].toString(16), 4)
+}
+
+function addSP(val) {
+	sys.SP[0] = (sys.SP[0] + val) % 65536
+	registers16.SP.value = lzfill(sys.SP[0].toString(16), 4)
+}
+
+function subSP(val) {
+	sys.SP[0] -= val
+	if (sys.SP[0] < 0) {
+		sys.SP[0] = (0x10000 + sys.SP[0])
+	}
+	registers16.SP.value = lzfill(sys.SP[0].toString(16), 4)
 }
 
 //SP mgmt instructions
-function pushReg(r) {
-	sys.RAM[sys.SP - 2] = sys[r.charAt(0)]
-	sys.RAM[sys.SP - 1] = sys[r.charAt(1)]
-	sys.SP -= 2
+function getSPdata() {
+	//gets data on top of stack
+	return make16(sys.RAM[sys.SP[0] + 2], sys.RAM[sys.SP[0] + 1])
+}
+
+function pushStack(n) {
+	let h = Math.floor(n / 256)
+	let l = n % 256
+
+	sys.SP[0]--
+	sys.RAM[sys.SP[0]] = h
+	sys.SP[0]--
+	sys.RAM[sys.SP[0]] = l
+
+	registers16.SP.value = lzfill(sys.SP[0].toString(16), 4)
 	loadRAMtoTable()
 }
 
-function getSPdata() {
-	//gets data on top of stack
-	return make16(sys.RAM[sys.SP + 1], sys.RAM[sys.SP + 2])
+function popStack() {
+	let retVal = 0
+	retVal = sys.RAM[sys.SP[0]]
+	sys.SP[0]++
+	retVal += sys.RAM[sys.SP[0]]*256
+	sys.SP[0]++
+	registers16.SP.value = lzfill(sys.SP[0].toString(16), 4)
+	return retVal
 }
 
-function popStack(r) {
-	set16reg(r, getSPdata())
-	sys.SP += 2
-}
-
+//RAM mgmt
 function setRAM(addr, byte) {
 	sys.RAM[addr] = byte
 	loadRAMtoTable()
 }
 
+function addRAM(addr, val) {
+	sys.RAM[addr] += val
+	loadRAMtoTable()
+}
+
+function subRAM(addr, val) {
+	sys.RAM[addr] -= val
+	loadRAMtoTable()
+}
+
 function addReg(name, val) {
-	sys[name] = (sys[name] + val) % 256
-	registers[name].value = lzfill(intToHex(sys[name]), 2)
+	sys[name][0] += val
+	registers[name].value = lzfill(intToHex(sys[name][0]), 2)
 }
 
 function subReg(name, val) {
-	sys[name] -= val
-	if (sys[name] < 0) {
-		sys[name] = (0x100 - Math.abs(sys[name]))
-	}
-	registers[name].value = lzfill(intToHex(sys[name]), 2)
+	sys[name][0] -= val
+	registers[name].value = lzfill(intToHex(sys[name][0]), 2)
 }
 
 function add16reg(name, value) {
 	let c0 = name.charAt(0)
 	let c1 = name.charAt(1)
 
-	let higherPart = sys[c0]
-	let lowerPart = sys[c1]
+	let higherPart = sys[c0][0]
+	let lowerPart = sys[c1][0]
 
 	let totalValue = make16(higherPart, lowerPart)
 	totalValue = lzfill(intToHex((totalValue + value) % 65536), 4)
@@ -347,15 +436,15 @@ function add16reg(name, value) {
 	let h = totalValue.slice(0, 2)
 	let l = totalValue.slice(2, 4)
 
-	sys[c0] = h
+	sys[c0][0] = parseInt(h, 16)
 	registers[c0].value = h
-	sys[c1] = l
+	sys[c1][0] = parseInt(l, 16)
 	registers[c1].value = l
 }
 
 function sub16reg(name, value) {
-	let higherPart = sys[name.charAt(0)]
-	let lowerPart = sys[name.charAt(1)]
+	let higherPart = sys[name.charAt(0)][0]
+	let lowerPart = sys[name.charAt(1)][0]
 
 	let totalValue = make16(higherPart, lowerPart)
 	let newIntValue = totalValue - value
@@ -364,9 +453,9 @@ function sub16reg(name, value) {
 	}
 	totalValue = lzfill(intToHex(newIntValue), 4)
 
-	sys[name.charAt(0)] = totalValue.slice(0, 2)
+	sys[name.charAt(0)][0] = parseInt(totalValue.slice(0, 2), 16)
 	registers[name.charAt(0)].value = lzfill(totalValue.slice(0, 2), 2)
-	sys[name.charAt(1)] = totalValue.slice(2, 4)
+	sys[name.charAt(1)][0] = parseInt(totalValue.slice(2, 4), 16)
 	registers[name.charAt(1)].value = lzfill(totalValue.slice(2, 4), 2)
 }
 
@@ -384,6 +473,37 @@ var go_button = document.getElementById("go-button")
 var step_button = document.getElementById("step-button")
 var stop_button = document.getElementById("stop-button")
 var help_button = document.getElementById("help-button")
+
+function saveEditor() {
+	localStorage['cont'] = editor.getValue()
+}
+
+function updateEditor(s) {
+	editor.setValue(s)
+	editor.clearSelection()
+	editor.focus()
+	saveEditor()
+}
+
+function updateEditorLang() {
+	updateEditor(localStorage['cont'])
+}
+
+//reads in a file to the editor
+function readF(e) {
+	let input = e.target
+
+	let reader = new FileReader()
+	reader.onload = function() {
+		let d = reader.result
+		if (mode == "editor-upload")
+			updateEditor(d)
+		else
+			setCfg(JSON.parse(d))
+	}
+	
+	reader.readAsText(input.files[0])
+}
 
 function makeOverwriteByte(target, cID) {
 	target.onclick = function() {
@@ -485,8 +605,46 @@ function makeOverwriteWord(target) {
 	}, false)
 }
 
+function makeOverwriteWordR16(target, i) {
+	target.onclick = function() {
+		this.selectionStart = 0
+		this.selectionEnd = 0
+	}
+	target.onfocus = function() {
+		this.selectionEnd = this.selectionStart
+	}
+	target.addEventListener('keypress', function(e) {
+		e.preventDefault()
+
+		if (legalByteKeys.indexOf(e.key.toUpperCase()) == -1) return
+
+	    var s = this.selectionStart
+	    this.value = this.value.substr(0, s) + e.key.toUpperCase() + this.value.substr(s + 1)
+	    this.selectionEnd = s
+
+	    this.selectionStart += 1
+
+	    if (this.selectionStart >= 4) {
+	    	this.selectionStart = 0
+	    	this.selectionEnd = 0
+
+	    	this.parentElement.parentElement.children[(i+1) % 4].children[1].focus()
+	    }
+	}, false)
+}
+
 function getRAMcell(x, y) { //both values are on the interval [0, 15]
 	return RAMtable.children[0].children[1 + y].children[1 + x]
+}
+
+function clearRAMcellHighlight() {
+	getRAMcell(cHighlight[0], cHighlight[1]).style.backgroundColor = "#d3d3d3"
+}
+
+function highlightCell(col, row) {
+	clearRAMcellHighlight()
+	cHighlight = [col, row]
+	getRAMcell(col, row).style.backgroundColor = "red"
 }
 
 function loadRAMtoTable(requestedCellAddr) {
@@ -497,8 +655,7 @@ function loadRAMtoTable(requestedCellAddr) {
 			let finalAddr = (hexToInt(gotoValue.value.slice(0, 2)) * 256) + (16 * row) + col
 			let currentCell = getRAMcell(col, row).children[0]
 			if (requestedCellAddr != null && requestedCellAddr == finalAddr) {
-				cHighlight = [col, row]
-				getRAMcell(col, row).style.backgroundColor = "red"
+				highlightCell(col, row)
 			}
 			if (finalAddr > RAMsize) {
 				currentCell.value = "??"
@@ -513,12 +670,12 @@ function updateRegisters() {
 	Object.keys(registers).forEach(r => {
 		registers[name].value = sys[name]
 	})
-	flags.S.value = getBit(sys.F, 7)
-	flags.Z.value = getBit(sys.F, 6)
-	flags.H.value = getBit(sys.F, 4)
-	flags.P.value = getBit(sys.F, 2)
-	flags.A.value = getBit(sys.F, 1)
-	flags.C.value = getBit(sys.F, 0)
+	flags.S.value = getBit(sys.F[0], 7)
+	flags.Z.value = getBit(sys.F[0], 6)
+	flags.H.value = getBit(sys.F[0], 4)
+	flags.P.value = getBit(sys.F[0], 2)
+	flags.N.value = getBit(sys.F[0], 1)
+	flags.C.value = getBit(sys.F[0], 0)
 }
 
 function clearRegisters() {
@@ -527,6 +684,12 @@ function clearRegisters() {
 	})
 	Object.keys(flags).forEach(f => {
 		flags[f].value = "0"
+	})
+}
+
+function clearOtherRegisters() {
+	Object.keys(registers16).forEach(r => {
+		registers16[r].value = "0000"
 	})
 }
 
@@ -540,6 +703,15 @@ function clearSys() {
 
 	//reset registers' apparent values
 	clearRegisters()
+
+	//reset other registers (SP/I*)
+	clearOtherRegisters()
+
+	//clear SP
+	registers16.SP.value = "FFFF"
+
+	//clear ports
+	initPorts()
 }
 
 function clearRAMcellHighlight() {
@@ -547,7 +719,7 @@ function clearRAMcellHighlight() {
 }
 
 window.addEventListener('mousedown', function() {
-	clearRAMcellHighlight()
+	if (!editor.getReadOnly()) clearRAMcellHighlight()
 })
 
 var editor = ace.edit("ace-editor")
@@ -556,22 +728,24 @@ var Range = ace.require('ace/range').Range
 editor.setTheme("ace/theme/monokai")
 editor.session.setMode("ace/mode/assembly_x86")
 
-editor.setFontSize(20)
+editor.setFontSize(localStorage['fsize'] || 20)
 
 if (localStorage['cont'] != undefined && typeof localStorage['cont'] !== 'undefined') {
-	editor.setValue(localStorage['cont'])
-	editor.clearSelection()
-	editor.focus()
+	updateEditor(localStorage['cont'])
 }
 
-document.getElementById("ace-editor").addEventListener('keyup', function(e) {
-	let lastLine = editor.session.doc.getLine(editor.getCursorPosition().row - 1)
+document.getElementById("ace-editor").addEventListener('keydown', function(e) {
+	let lastLine = editor.session.doc.getLine(editor.getCursorPosition().row)
 	if (e.key == "Enter" && lastLine.charAt(lastLine.length-1) == ":") {
-		editor.indent()
+		e.preventDefault()
+		editor.insert("\n\t")
 	}
 })
 
-window.addEventListener('keyup', function(e) {
+let keysDown = []
+
+window.onkeydown = function(e) {
+	keysDown.push(e.key)
 	localStorage['cont'] = editor.getValue()
 	if (e.key == "F2") {
 		go_button.click()
@@ -581,8 +755,18 @@ window.addEventListener('keyup', function(e) {
 		stop_button.click()
 	} else if (e.key == "F9") {
 		help_button.click()
+	} else if (e.key == "+" && keysDown.indexOf("Alt") > -1 && keysDown.indexOf("Shift") > -1) {
+		editor.setFontSize(parseInt(editor.getFontSize()) + 1)
+		localStorage['fsize'] = editor.getFontSize()
+	} else if (e.key == "_" && keysDown.indexOf("Alt") > -1 && keysDown.indexOf("Shift") > -1) {
+		editor.setFontSize(parseInt(editor.getFontSize()) - 1)
+		localStorage['fsize'] = editor.getFontSize()
 	}
-})
+}
+
+window.onkeyup = function(e) {
+	delete keysDown[keysDown.indexOf(e.key)]
+}
 
 //get important elements
 //get register inputs
@@ -597,13 +781,20 @@ var registers = {
 	F : document.getElementById("f-field")
 }
 
+var registers16 = {
+	PC : document.getElementById("pc-16field"),
+	SP : document.getElementById("sp-16field"),
+	IX : document.getElementById("ix-16field"),
+	IY : document.getElementById("iy-16field")
+}
+
 //get flag inputs
 var flags = {
 	S : document.getElementById("s-flag"),
 	Z : document.getElementById("z-flag"),
 	H : document.getElementById("h-flag"),
 	P : document.getElementById("p-flag"),
-	A : document.getElementById("a-flag"),
+	N : document.getElementById("n-flag"),
 	C : document.getElementById("c-flag"),
 }
 
@@ -612,7 +803,7 @@ const flagBitPositions = {
 	Z : 6,
 	H : 4,
 	P : 2,
-	A : 1,
+	N : 1,
 	C : 0
 }
 
@@ -621,26 +812,33 @@ Object.keys(registers).forEach((r, i) => {
 	makeOverwriteByte(registers[r], i)
 	if (r != "F") {
 		registers[r].onkeypress = function() {
-			sys[r] = hexToInt(this.value)
+			sys[r][0] = hexToInt(this.value)
 		}
 	} else {
 		registers[r].onkeypress = function() {
 			let asInt = hexToInt(this.value)
-			sys[r] = asInt
+			sys[r][0] = asInt
 			flags.S.value = getBit(asInt, 7)
 			flags.Z.value = getBit(asInt, 6)
 			flags.H.value = getBit(asInt, 4)
 			flags.P.value = getBit(asInt, 2)
-			flags.A.value = getBit(asInt, 1)
+			flags.N.value = getBit(asInt, 1)
 			flags.C.value = getBit(asInt, 0)
 		}
+	}
+})
+
+Object.keys(registers16).forEach((r16, i) => {
+	makeOverwriteWordR16(registers16[r16], i)
+	registers16[r16].onkeypress = function() {
+		sys[r16][0] = hexToInt(this.value)
 	}
 })
 
 Object.keys(flags).forEach((f, i) => {
 	makeOverwriteBit(flags[f], i)
 	flags[f].onkeypress = function() {
-		sys.F = modifyBit(sys.F, flagBitPositions[f], parseInt(this.value))
+		sys.F[0] = modifyBit(sys.F, flagBitPositions[f], parseInt(this.value))
 		registers.F.value = lzfill(intToHex(sys.F), 2)
 	}
 })
@@ -687,3 +885,5 @@ gotoValue.addEventListener('keydown', function(e) {
 		gotoButton.click()
 	}
 })
+
+registers16.SP.value = "FFFF"

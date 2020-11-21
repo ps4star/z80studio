@@ -1,8 +1,79 @@
+@font-face {
+	font-family: "Monaco";
+	src: url("./monaco.ttf");
+}
+
 * {
 	color: white;
-	font-family: "Courier New";
+	font-family: Monaco, sans-serif;
+	font-smooth: always;
+}
+
+p {
+	font-size: 18px;
+	margin-left: 15%;
+	margin-right: 15%;
+	text-align: center;
+}
+
+p code {
+	text-align: left;
+	margin: auto auto;
+}
+
+code {
+	display: block;
+	white-space: pre-wrap;
+}
+
+.global-c {
+	background-color: #333;
+	padding: 6px;
+	border: 1px solid grey;
+	border-radius: 5px;
+	font-family: Courier New;
+}
+
+.c-type {
+	font-family: Courier New;
+	color: cyan;
+}
+
+.c-num {
+	font-family: Courier New;
+	color: #cc0099;
+}
+
+.c-com {
+	font-family: Courier New;
+	color: darkgrey;
+}
+
+h1, h2, h3, h4, h5, h6 {
+	text-align: center;
 }
 
 h1 {
+	font-size: 48px;
+}
+
+h2 {
+	font-size: 32px;
+}
+
+h3 {
+	font-size: 24px;
+}
+
+.h2-cheader {
+	color: red;
+}
+
+.center {
+	width: 100%;
 	text-align: center;
+}
+
+.center img {
+	margin: auto;
 }

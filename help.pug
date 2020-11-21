@@ -1,13 +1,27 @@
 html
 	head
-		title Z80 Stdio Help
+		title Z80 Studio Help
 		link(rel="stylesheet" href="help.css" type="text/css")
-	body(style="background-color: black;")
-		h1 Z80 Stdio Help
-		br
-		-
-			var clrhomeLink = "<span><a style='cursor: hand;' onclick='window.open(\"https://clrhome.org/table/\")'><u>Z80 Instruction Set</u></a></span>";
-		p Some helpful links:
-		ul
-			li !{clrhomeLink}
+		link(rel="icon" href="Zilog_r.png" type="image/png")
+	body(style="background-color: #111;")
+		h1 Z80 Studio Menu Help
+		h2 ||| CONFIG |||
+		h3 Download Config Template
+		p Downloads a template Z80 Studio configuration file (with comments). Configuration files can be imported with the <span style="color: blue;">Import Config</span> option.
+		h3 Download Config (No Comments)
+		p Downloads a template Z80 Studio configuration file (without comments). Configuration files can be imported with the <span style="color: blue;">Import Config</span> option.
+		h3(style="color: blue;") Import Config
+		p Allows the upload of a Z80 Studio configuration file. Must be in JSON format. If the uploaded file is invalid or not formatted correctly, nothing will happen and an <span style="color: red;">INVALID CONFIG</span> error will occur.
+		h2 ||| HELP |||
+		h3(style="color: green;") How to Use This Menu
+		p Opens this page.
+		h3(style="color: green;") Z80 Instruction Set
+		p Redirects to clrhome.org's <a style="cursor: hand; color: blue; text-decoration: underline;" onclick="window.open('https://clrhome.org/table/');">Z80 Instruction Set table</a>. It displays both the hex opcodes as well as ASM names, and provides fairly detailed technical info for each instruction. If you need help with ASM programming, this is the place to go.
+		h2 ||| SAVE/LOAD PROGRAM |||
+		h3(style="color: blue;") Save Editor
+		p Saves the contents of the editor as a .txt file.
+		h3(style="color: blue;") Save RAM
+		p Saves a copy of RAM as ASCII string (.txt file).
+		h3(style="color: red;") Load Editor
+		p Allows the upload of an editor data file. The file can have any extension. The data read from this file is pasted directly into the editor.
 

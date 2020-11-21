@@ -1,67 +1,135 @@
 {
 	//Welcome to the Z80 Studio config file!
 
-	//***PORTS***
+	//***ENVR***
 
 	/*
-	There are exactly 256 ports (identified with hex labels 0x00 - 0xFF) available for use on the Z80 processor. What these ports do and how they behave is entirely system-dependent. They may be used for graphics, sound, etc. Port types currently supported are:
-
-		- Controller (modifies certain parameters of other ports)
-		- Audio (AudioBuffer)
+	These are general environment settings
 	*/
 
-	//Port bindings
-	"ports" : {
-		//No ports are bound by default, so here are some examples:
+	//Envr settings
+	"envr" : {
+		//Max number of jumps that can occur before forced termination. -1 for no limit.
+		"jpLimit" : -1,
+
+		//Defines what to do in case of a halt (0x76) instruction.
+		//	- "ignore" (does nothing)
+		//	- "std"    (standard behavior; varies depending on interrupt settings)
+		"haltBehavior" : "ignore",
+
+		//Sets start of program RAM
+		"prgmStart" : "0000",
+
+		//Specifies what to do when readonly RAM address is accessed.
+		//	- "ignore"	(does not write to RAM)
+		//	- "warn"	(displays a JS alert() message)
+		//	- "error"	(displays a JS alert() message and stops execution)
+		//	- "stop"	(stops execution without displaying an error)
+		"onReadonlyWrite" : "error",
+
+		//Specifies read-only sections of RAM
+		"readonlyRAM" : [
+			//Nothing is here by default, so here is an example.
+
+			//Index 0 is the start, index 1 is the end. If the end is less than the start, an invalid config error occurs. If only a start is specified, an end equal to the start is implied (so only 1 byte is set to readonly).
+			//["0000", "7FFF"]
+		],
+
+		//Automatically download specified data at program termination. All downloads are raw (.bin file extension).
+		"autoDownloads" : [
+			//Nothing is here by default, so here are some examples.
+
+			/*
+
+			{
+				//Downloads a port's entire history from start to end of execution
+				"type" : "port",
+
+				//Specifies port ID to download
+				"port" : "00"
+			},
+
+			{
+				//Downloads an image of the RAM at end of execution (always 64k in size, bin format)
+				"type" : "RAM"
+			}
+
+			*/
+		]
+	},
+
+	//Z80-only options
+	"Z80" : {
+
+		//***PORTS***
 
 		/*
+		There are exactly 256 ports (identified with hex labels 0x00 - 0xFF) available for use on the Z80 processor. What these ports do and how they behave is entirely system-dependent. They may be used for graphics, sound, etc. Port types currently supported are:
 
-		//Audio port example
-		"00" : {
-
-			//Specifies port type, audio in this case
-			"type" : "audio",
-
-			//Specifies number of bytes to accumulate before dumping (playing) the audio buffer
-			"bufferSize" : 256,
-			
-			//Specifies audio bit depth. Must be a power of 2 between 1 and 256 (inclusive). If this data is modified by a controller, it is incremented by 1 (so writing FF sets it to 256, and 00 sets it to 1). If the data written is not a power of 2, nothing will happen.
-			"bitDepth" : 8
-
-		}
-		
+			- Controller (modifies parameters of other ports)
+			- Audio (AudioBuffer)
 		*/
 
-		/*
+		//Port bindings
+		"ports" : {
+			//No ports are bound by default, so here are some examples:
 
-		//Controller port example (in this example, controlling the previous audio port, 00)
-		"01" : {
-	
-			//Specifies port type, controller in this case
-			"type" : "controller",
+			/*
 
-			//Now we must specify the port and parameter to modify
-			"modifies" : {
+			//Audio port example
+			"00" : {
+
+				//Specifies port type, audio in this case
+				"type" : "audio",
+
+				//Specifies number of bytes to accumulate before dumping (playing) the audio buffer
+				"bufferSize" : 256,
+				
+				//Specifies audio bit depth. Must be a power of 2 between 1 and 256 (inclusive). If this data is modified by a controller, it is incremented by 1 (so writing FF sets it to 256, and 00 sets it to 1). If the data written is not a power of 2, nothing will be written.
+				"bitDepth" : 8
+
+			}
+
+			*/
+
+			/*
+
+			//Controller port example (in this example, controlling the previous audio port, 00)
+			"01" : {
+		
+				//Specifies port type, controller in this case
+				"type" : "controller",
+
+				//Now we must specify the port and parameter to modify
 				//Specifies port ID (1-byte hex string)
 				"port" : "00",
 
-				//Specifies param to mod
+				//Specifies param to mod. "type" is the only field that can NOT be modified.
 				"param" : "bitDepth",
 
 				//(OPTIONAL) Specifies the context (type) of this port's data (e.g. Is it the higher part of a 16-bit int, with the lower part being provided by a 2nd controller port? Is it a boolean? Is it signed?). This field is usually "byte" (unsigned 8-bit int). Defaults to "byte" if not specified.
 				//Possible values:
-				//	- "byte"   (unsigned 8-bit int, or lower part of a Uint16)
+				//	- "bit"    (raw bit, takes lowest bit of byte sent)
+				//	- "byte"   (raw byte, or lower part of an int16)
 				//	- "lower"  (same as "byte" but more context-ey/human-readable)
-				//	- "higher" (higher part of a Uint16)
+				//	- "higher" (higher part of an int16)
 				//	- "signed" (signed 8-bit int)
 				//	- "bool"   (if 0x00, evaluates to false, otherwise true)
 				"type" : "byte"
 
-				//Now bytes written to this port will instead modify the "bitDepth" of port 00! 
+				//Now bytes written to this port will instead modify the "bitDepth" of port 00!
+
 			}
 
+			*/
 		}
+	},
 
-		*/
+	//4Z-only options
+	"4Z" : {
+
+		//Specifies a RAM address to begin storing vars at
+		"varStart" : "C000"
+
 	}
 }

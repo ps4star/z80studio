@@ -7,233 +7,315 @@ String.prototype.replaceSeries = function(arr) {
 	return res
 }
 
-function removeHexMarkers(s) {
-	let idx = 0
-	let cTok = ""
-	let wasHex = false
-	let res = ""
-	if (s.split(" ").length == 1 || s.split(" ")[0] == "rst") return s
-	while(idx < s.length) {
-		let cChar = s.charAt(idx)
-		if (cChar == "h" && wasHex) {
-			idx++
-			continue
-		}
-		if (legalByteKeys.indexOf(cChar.toUpperCase()) > -1) {
-			wasHex = true
-		} else {
-			wasHex = false
-		}
-		res += cChar
-		idx++
-	}
-	return res
-}
 
 var parseState = {}
 
-function doConversions(s) {
-	//does conversions such as %binstring -> $hexstring
-	//binstring to hexstring conversion
-	let binstringPattern = "\%[0-1]{8}"
-	let ci = s.search(binstringPattern)
-	while(ci > -1) {
-		s = s.slice(0, ci) + lzfill(intToHex(parseInt(s.slice(ci + 1, ci + 9), 2)) + s.slice(ci + 9), 2).toUpperCase() + "h"
-		ci = s.search(binstringPattern)
-	}
-	return s
-}
-
-function initParser() {
+function initParser(dt) {
 	clearSys()
-	let documentData = editor.getValue() //gets editor data as string
-	documentData = doConversions(documentData)
-	parseState.lines = documentData.replaceSeries([[" {4}", "\t"], ["\t", ""], ["\r\n", "\n"], ["\n+", "\n"]]).split("\n")
+	let documentData = dt
+	parseState.lines = documentData.replace(/\/\*.+\*\//g, "").replace(/ {4}/g, "\t").replace(/\t/g, "").split("\n")
+	parseState.lines.push("")
+	parseState.derefedLines = []
 	parseState.ln = 0
+	parseState.primitiveSym = []
+	parseState.vars = {}
 	parseState.sym = {}
 	parseState.totalProgramBytes = 0
 	parseState.cLoadAddr = 0
+	parseState.cParseAddr = 0
 }
 
-const firstPassOps = [".define"]
+const opcodeSyms = ["ld", "jr", "daa", "ex", "exx", "jp", "call", "ret", "rst", "and", "or", "xor", "neg", "in", "out", "cpl", "rra", "rrca", "rla", "rlca", "rl", "rr", "sub", "add", "sbc", "adc", "cpir", "ldir", "pop", "push", "rrd", "rld", "cpir", "inir", "otir", "ldd", "cpd", "ind", "outd", "lddr", "cpdr", "indr", "otdr", "im", "retn", "bit", "res", "set", "sll", "sla", "sra", "srl", "rrc", "rlc", "cp", "dec", "inc", "nop", "ccf", "scf", "djnz"]
 
-function calcRelJump(dest, source) {
-	let diff = dest - source
-	if (diff > 255) {
-		exitWith("Difference between relative jump instruction location (line "+(parseState.ln+1)+") and desired jump location exceeds int8 limit (either too far back or too far forwards).")
-	}
-	if (diff < 0) {
-		diff = (256 - Math.abs(diff))
-	}
-	return diff
-}
+var outputBuffer = []
+var coff = 0
 
-function derefLn(ln, rel) {
-	rel = rel || false
-	let toAnalyze = ln
-	Object.keys(parseState.sym).forEach(s => {
-		if (!ln.includes(s)) return
-		if (!rel) {
-			toAnalyze = toAnalyze.replace(s, lzfill(parseState.sym[s].byteLocation.toString(16), parseState.sym[s].strlen)+"h")
-		} else {
-			toAnalyze = toAnalyze.replace(s, lzfill(calcRelJump(parseState.sym[s].byteLocation, parseState.cLoadAddr).toString(16), 2)+"h")
-		}
-	})
-	return toAnalyze
-}
-
-const relJumpIns = [
-	"jr",
-	"dj"
-]
-
-function countBytes(ln) {
-	let newln = ln.split(" ")[0] + " " + ln.split(" ").slice(1).join("")
-	if (ln.split(" ").length == 1) {
-		newln = ln
-	}
-	let retObj = ""
-	let rel = false
-	if (relJumpIns.indexOf(ln.slice(0, 2)) > -1) {
-		rel = true
-	}
-	newln = derefLn(newln, rel)
-	let INSkeys = Object.keys(INS)
-	console.log(newln)
-	for (let i = 0; i < INSkeys.length; i++) {
-		//console.log(removeHexMarkers(newln).replace("$", ""))
-		let s = INSkeys[i]
-		if (new RegExp(s.replace(/\*/g, "[0-9a-fA-F]{2}")).test(removeHexMarkers(newln).replace("$", ""))) {
-			retObj = INS[s][0]
-			break
-		}
-	}
-	return retObj
-}
-
-function bufferRAM(byte) {
-	//adds byte to RAM and increments parseState.cLoadAddr
-	sys.RAM[parseState.cLoadAddr] = parseInt(byte, 16)
+function bufferByte(byte) {
+	outputBuffer.push(byte)
 	parseState.cLoadAddr++
 }
 
-function grabSymbols() {
-	//1st pass: gets label names
+function bufferByteArray(arr) {
+	arr.forEach(byte => {
+		byte = parseInt(byte, 16)
+		outputBuffer.push(byte)
+		parseState.cLoadAddr++
+	})
+}
 
-	let cbyte = 0
+function bufferRawByteArray(arr) {
+	arr.forEach(byte => {
+		outputBuffer.push(byte)
+		parseState.cLoadAddr++
+	})
+}
 
+function insertByteToBuffer(byte, pos) {
+	outputBuffer.splice(pos+1, 0, byte)
+}
+
+function writeBufferByte(byte, pos) {
+	outputBuffer[pos] = byte
+}
+
+function writeBufferToRAM() {
+	//writes each byte in buffer to RAM
+	outputBuffer.forEach((byte, idx) => {
+		sys.RAM[idx] = byte
+	})
+
+	loadRAMtoTable()
+
+	//clears buffer
+	outputBuffer = []
+}
+
+var bytePositions = {}
+
+function parse() {
+	//STEP 1: literally just make a list of symbols (+ delete .define statements)
 	parseState.lines.forEach((line, idx) => {
+		if (line.length == 0) return
+		line = line.replace(/ +/g, " ")
+		if (line.charAt(line.length-1) == ":") {
+			parseState.primitiveSym.push(line.slice(0, line.length-1))
+		} else if (line.split(" ")[0] == ".define") {
+			parseState.vars[line.split(" ")[1]] = line.split(" ")[2]
+			parseState.lines[idx] = ""
+		}
+	})
 
-		if (line.length == 0 || (line.split(" ").length == 1 && !line.includes(":"))) return
+	bytePositions = {}
 
-		//gets args and checks if op needs to be handled by 1st pass
-		let args = line.split(" ")
-		let op = args[0]
+	//STEP 2: parse
+	parseState.lines.forEach((line, idx) => {
+		if (line.length == 0) return
+		//removes all comments
+		line = line.replace(/;.+/g, "").replace(/\/\/.+/g, "").replace(/ +$/, "")
+		if (line.split(" ")[0].toLowerCase() == ".db") {
+			let args = line.split(" ")
+			if (args[1].charAt(0) == "\"" || args[1].charAt(0) == "'") {
+				//str
+				let noStrLn = line.replace(/'/g, "\"")
+				let noStrArgs = noStrLn.split(" ")
+				let onlyString = noStrArgs.slice(1).join(" ")
+				let c = 0
+				let finalDt = ""
+				let state = "none"
+				while (c < onlyString.length) {
+					if (state == "ignore") {
+						finalDt += onlyString.charAt(c)
+						state = "main"
+						c++
+						continue
+					}
+					if (onlyString.charAt(c) == "\"" && state == "none") {
+						state = "main"
+					} else if (state == "main") {
+						if (onlyString.charAt(c) == "\\") {
+							state = "ignore"
+							c++
+							continue
+						}
+						if (onlyString.charAt(c) == "\"") {
+							break
+						} else {
+							finalDt += onlyString.charAt(c)
+						}
+					}
+					c++
+				}
+				bufferRawByteArray(stringToASCII(finalDt))
 
-		let byteCountAttempt = countBytes(line)
-		if (byteCountAttempt != "") {
-			cbyte += byteCountAttempt
+				//terminator
+				bufferByte(0)
+			} else {
+				//is not string, but series of bytes instead
+				let res = line.split(" ").slice(1).join(" ").replace(/ +/g, ",").replace(/h/g, "").replace(/\$/g, "").split(",").filter(el => {
+					return el.length > 0
+				})
+				bufferByteArray(res)
+			}
+			return
+		}
+		//rep .define constants
+		Object.keys(parseState.vars).forEach(v => {
+			line = line.replace(v, parseState.vars[v])
+		})
+
+		let noSpaceLine = line.indexOf(" ") > -1 ? line.split(" ")[0] + " " + line.split(" ").slice(1).join(" ").replace(/ +/g, "") : line.replace(/ +/g, "")
+		
+		//rep syms
+		let strucLn = noSpaceLine.replace(/[a-fA-F0-9]{3,4}h/g, "**").replace(/\$[a-fA-F0-9]{3,4}/g, "**").replace(/[a-fA-F0-9]{2}h/g, "*").replace(/\$[a-fA-F0-9]{2}/g, "*")
+
+		//resolve symbols
+		parseState.primitiveSym.forEach(sym => {
+			if (strucLn.charAt(strucLn.length - 1) == ":") {
+				return
+			}
+			if (strucLn.split(" ")[0].toLowerCase() == "jr") {
+				strucLn = strucLn.replace(sym, "*")
+			} else {
+				strucLn = strucLn.replace(sym, "**")
+			}
+		})
+
+		//strucLn now contains template instruction data
+		//if it's a label
+		if (noSpaceLine.charAt(noSpaceLine.length - 1) == ":") {
+			let symName = noSpaceLine.slice(0, noSpaceLine.length - 1)
+			parseState.sym[symName] = {}
+			parseState.sym[symName].byteLocation = parseState.cLoadAddr
+			parseState.sym[symName].ln = idx
 			return
 		}
 
-		//op is now guaranteed to be a 1st-pass op
-		switch (op) {
-			case ".define":
-				break
-			default:
-				//label case
-				let lbl = line.slice(0, line.length - 1) //gets everything but the ':'
-				parseState.sym[lbl] = {byteLocation: cbyte, ln: idx, strlen: 4}
-				break
-		}
-	})
+		bytePositions[idx] = parseState.cLoadAddr
 
-	parseState.totalProgramBytes = cbyte
-}
+		let bytes = []
 
-function getHexFromLine(l) {
-	let hxd = ""
-	if (l.indexOf("$") > -1) {
-		let s = l.indexOf("$") + 1
-		while (l.charAt(s) != "," && s < l.length) {
-			hxd += l.charAt(s)
-			s++
-		}
-	} else if (l.indexOf("h") > -1) {
-		let ind = l.indexOf("h")
-		let s = l.charAt(ind - 1)
-		if (legalByteKeys.indexOf(l.charAt(ind - 3)) > -1) {
-			hxd += l.slice(ind - 4, ind - 2)
-		}
-		if (legalByteKeys.indexOf(s) > -1) {
-			hxd += l.slice(ind - 2, ind)
-		}
-	}
-	return hxd
-}
+		let p1 = undefined
+		let p2 = undefined
 
-function bufferLineToRAM(line) {
-	let sanitizedLine = line.replaceSeries([[", ", ","], [" +", " "]])
+		let numParams = (strucLn.match(/\*/g) || []).length
 
-	sanitizedLine = derefLn(sanitizedLine)
-
-	let hxd = getHexFromLine(sanitizedLine)
-
-	let op = 0
-	Object.keys(INS).forEach(i => {
-		if (new RegExp(i.replace(/\*\*/, "[0-9a-fA-F]{4}").replace(/\*/, "[0-9a-fA-F]{2}")).test(removeHexMarkers(sanitizedLine).replace(/\$/g, ""))) {
-
-			let temp = parseState.cLoadAddr
-
-			//op
-			for (var k = 1; k < INS[i].length; k++) {
-				bufferRAM(intToHex(INS[i][k]))
-			}
-			if (hxd.length >= 2) {
-				//p1
-				bufferRAM(hxd.slice(0, 2))
-				if (hxd.length == 4) {
-					//p2
-					bufferRAM(hxd.slice(2, 4))
+		//now that we know it's an INS, we need to get params if any exist
+		if (strucLn.indexOf("*") > -1) {
+			//there exist 1 or more params
+			let off = 0
+			for (let charID = 0; charID < strucLn.length; charID++) {
+				let cChar = strucLn[charID]
+				if (cChar == "*") {
+					let dt = parseInt(noSpaceLine.slice(charID+off, charID+off + 2), 16)
+					if (Number.isNaN(dt)) {
+						dt = parseInt(noSpaceLine.slice(charID+off + 1, charID+off + 3), 16)
+					}
+					if (Number.isNaN(dt)) {
+						continue
+					}
+					bytes.push(dt)
+					off++
+					continue
 				}
 			}
+		}
 
-			//checks if instruction was formed correctly
-			if ( (parseState.cLoadAddr - temp) != (INS[i][0] + INS[i].length - 2)) {
-				//if specified instruction size is incongruent with actual bytes dumped...
-				exitWith("Instruction at line " + (parseState.ln + 1) + " is defined as taking " + INS[i][0] + " bytes, but was formed with " + (parseState.cLoadAddr - temp) +". Remember to use $xx or xxh for immediate hex values.")
+		if (bytes.length > 0) {
+			p1 = bytes[0]
+		}
+
+		if (bytes.length > 1) {
+			p2 = bytes[1]
+		}
+
+		//p1 and p2 are initialized!
+
+		//if it's an INS
+		let indexOfINS = Object.keys(INS).indexOf(strucLn)
+		if (indexOfINS > -1) {
+			let cIns = INS[Object.keys(INS)[indexOfINS]]
+			//indexOfINS = index
+			//cIns       = ins data
+			//cIns[0]    = length
+			//cIns[1:]   = byte data
+
+			//std. all ins have this
+			bufferByte(cIns[1])
+
+			if (cIns.length > 2) {
+				bufferByte(cIns[2])
+			}
+
+			if (cIns.length > 3) {
+				//[XXCB]**XX
+				bufferByte(p1)
+				bufferByte(cIns[3])
+			} else {
+				if (numParams > 0) {
+					bufferByte(p1 || 0)
+				}
+
+				numParams--
+
+				if (numParams > 0) {
+					bufferByte(p2 || 0)
+				}
+			}
+		}
+
+	})
+
+	let testO = []
+
+	outputBuffer.forEach(b => {
+		testO.push(lzfill(b.toString(16), 2).toUpperCase())
+	})
+
+	//STEP 3: resolve symbols and fix output byte buffer accordingly
+	parseState.lines.forEach((line, idx) => {
+		if (line.length == 0 || line.split(" ")[0].toLowerCase() == ".db" || line.replace(/ +/g, "").charAt(line.replace(/ +/g, "").length - 1) == ":") return
+		let newln = line
+		let newbyte = 0
+		Object.keys(parseState.sym).forEach(sym => {
+			if (newln != line) return
+			newbyte = parseState.sym[sym].byteLocation
+			newln = line.replace(sym, newbyte)
+		})
+		if (newln != line) {
+			//changed
+			let thisLinePosition = bytePositions[idx]
+			let arg0 = newln.split(" ")[0].toLowerCase()
+			if (arg0 == "jr") {
+				newbyte = (newbyte) % 256
+				writeBufferByte(calcRel(thisLinePosition, newbyte), thisLinePosition + 1)
+			} else {
+				newbyte = (newbyte) % 65536
+				writeBufferByte(Math.floor(newbyte / 256), thisLinePosition + 1)
+				writeBufferByte(newbyte % 256, thisLinePosition + 2)
 			}
 		}
 	})
+
+	parseState.totalProgramBytes = outputBuffer.length
+
+	//STEP 4: finalize buffer by writing it to RAM
+	writeBufferToRAM()
 }
 
 function assemble() {
-	parseState.lines.forEach(l => {
-		if (l.length == 0) return
-		bufferLineToRAM(l)
-	})
 	loadRAMtoTable()
 	clearRAMcellHighlight()
 }
 
 function parseLnStep() {
-	while (parseState.lines[parseState.ln].charAt(parseState.lines[parseState.ln].length-1) == ":" || parseState.lines[parseState.ln] == "") {
+
+	while (parseState.lines[parseState.ln].includes(":") || parseState.lines[parseState.ln].replace(/^;.+$/g, "") == "") {
 		parseState.ln++
 		if (parseState.ln >= parseState.lines.length) {
 			return null
 		}
 	}
+
+	if (getPC() >= parseState.totalProgramBytes) return null
+
 	clearMarkers()
 	editor.session.addMarker(new Range(parseState.ln, 0, parseState.ln, 1), "stepHL", "fullLine")
+
+	let cPC = lzfill(intToHex(getPC()), 4)
+
+	highlightCell((parseInt(cPC.slice(2, 4), 16) % 16), Math.floor(parseInt(cPC.slice(2, 4), 16) / 16))
 
 	//runs exec
 	let eResult = exec()
 
 	if (eResult.isJump) {
-		let newln = 0
-		Object.keys(parseState.sym).forEach(s => {
-			if (parseState.lines[parseState.ln].includes(s)) {
-				parseState.ln = parseState.sym[s].ln
+		let run = true
+		Object.keys(bytePositions).forEach(bytePos => {
+			if (!run) return
+			let cbyte = bytePositions[bytePos]
+			if (getPC() == cbyte) {
+				parseState.ln = bytePos
+				run = false
 			}
 		})
 	} else {
@@ -243,16 +325,17 @@ function parseLnStep() {
 	return 0 //OK
 }
 
-function parseDocument() {
-	initParser()
-	grabSymbols()
+function parseDocument(s) {
+	s = s || editor.getValue()
+	initParser(s)
+	parse()
 	assemble()
 
 	while (getPC() < parseState.totalProgramBytes) {
 		exec()
 	}
 
-	resetAll()
+	stopButton.click()
 }
 
 function clearMarkers() {
@@ -267,11 +350,15 @@ function clearMarkers() {
 function resetAll() {
 	parseState = {}
 	clearMarkers()
+	coff = 0
 }
 
 function exitWith(errMsg) {
 	resetAll()
 	alert(errMsg)
+	clearSys()
+	clearRAMcellHighlight()
+	editor.setReadOnly(false)
 }
 
 var goButton = document.getElementById("go-button")
@@ -280,7 +367,11 @@ var stopButton = document.getElementById("stop-button")
 
 //binds functions to each button
 goButton.onclick = () => {
+	editor.setReadOnly(true)
+
 	parseDocument()
+
+	editor.setReadOnly(false)
 }
 
 stepButton.onclick = () => {
@@ -288,8 +379,8 @@ stepButton.onclick = () => {
 	editor.setReadOnly(true)
 
 	if (Object.keys(parseState).length < 1) {
-		initParser()
-		grabSymbols()
+		initParser(editor.getValue())
+		parse()
 		assemble()
 	}
 
@@ -299,14 +390,18 @@ stepButton.onclick = () => {
 	}
 
 	if (parseLnStep() == null) {
-		resetAll()
+		stopButton.click()
 		return
 	}
 
 }
 
 stopButton.onclick = () => {
+	clearRAMcellHighlight()
 	resetAll()
 	clearSys()
+
+	dumpAllPortBuffers()
+
 	editor.setReadOnly(false)
 }
