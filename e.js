@@ -1,7 +1,7 @@
 //RAM execution script
 function getPar(n) {
 	//gets parity of number
-	return ((n.toString(2).match(/1/g) || []).length % 2) + 1
+	return ((n.toString(2).match(/1/g) || []).length + 1) % 2
 }
 
 function getNextByte() {
@@ -28,9 +28,17 @@ function getP3() {
 	return sys.RAM[sys.PC[0]+3]
 }
 
+function getP23() {
+	return sys.RAM[sys.PC[0]+2] * 256 + sys.RAM[sys.PC[0]+3]
+}
+
 function getP4() {
 	//returns 4 bytes after PC (used for 2-byte ext instructions)
 	return sys.RAM[sys.PC[0]+4]
+}
+
+function getP34() {
+	return sys.RAM[sys.PC[0]+3] * 256 + sys.RAM[sys.PC[0]+4]
 }
 
 function setPC(n) {
@@ -339,11 +347,478 @@ function setStdOrFlags8(newVal) {
 	updateF()
 }
 
-let oldA, oldDE, oldHL, bit0, bit7, cFlag, needed2nd
+function setStdInFlags(newVal) {
+	setNFlag(0)
+	setHFlag(0)
+	setPFlag(getPar(newVal))
+
+	//zero
+	setZFlag(Number(newVal == 0))
+
+	//sign
+	setSFlag(getBit(newVal, 7))
+}
+
+function negA() {
+	setStdSubFlags8(0, getA())
+	setA((~getA()) + 1)
+}
+
+let oldA, oldDE, oldHL, bit0, bit7, cFlag, needed2nd, ptA, ptB, ptC
 
 let eResult = {
 	isJump : false
 }
+
+const extdTable = [
+	//0x40
+	() => {
+		//in b,(c)
+		setB(handlePortRead(getC()))
+		setStdInFlags(getB())
+		incPC()
+	},
+
+	//0x41
+	() => {
+		//out (c),b
+		handlePortWrite(getC(), getB())
+		incPC()
+	},
+
+	//0x42
+	() => {
+		//sbc hl,bc
+		oldHL = getHL()
+		sub16reg("HL", getBC()+getCFlag())
+		setStdSubFlags16(oldHL, getBC()+getCFlag())
+		incPC()
+	},
+
+	//0x43
+	() => {
+		//ld (**),bc
+		setRAM(getP12(), getBC())
+		addPC(3)
+	},
+
+	//0x44
+	() => {
+		negA()
+		incPC()
+	},
+
+	//0x45
+	() => {
+		incPC()
+	},
+
+	//0x46
+	() => {
+		incPC()
+	},
+
+	//0x47
+	() => {
+		incPC()
+	},
+
+	//0x48
+	() => {
+		//in c,(c)
+		setC(handlePortRead(getC()))
+		setStdInFlags(getC())
+		incPC()
+	},
+
+	//0x49
+	() => {
+		//out (c),c
+		handlePortWrite(getC(), getC())
+		incPC()
+	},
+
+	//0x4A
+	() => {
+		//adc hl,bc
+		oldHL = getHL()
+		set16reg("HL", getBC()+getCFlag())
+		setStdAddFlags16(oldHL, getBC()+getCFlag())
+		incPC()
+	},
+
+	//0x4B
+	() => {
+		//ld bc,(**)
+		set16reg("BC", getRAM(getP12()))
+		addPC(3)
+	},
+
+	//0x4C
+	() => {
+		negA()
+		incPC()
+	},
+
+	//0x4D
+	() => {
+		incPC()
+	},
+
+	//0x4E
+	() => {
+		incPC()
+	},
+
+	//0x4F
+	() => {
+		incPC()
+	},
+
+	//0x50
+	() => {
+		//in d,(c)
+		setD(handlePortRead(getC()))
+		setStdInFlags(getD())
+		incPC()
+	},
+
+	//0x51
+	() => {
+		//out (c),d
+		handlePortWrite(getC(), getD())
+		incPC()
+	},
+
+	//0x52
+	() => {
+		//sbc hl,de
+		oldHL = getHL()
+		sub16reg("HL", getDE()+getCFlag())
+		setStdSubFlags16(oldHL, getDE()+getCFlag())
+		incPC()
+	},
+
+	//0x53
+	() => {
+		//ld (**),de
+		setRAM(getP12(), getDE())
+		addPC(3)
+	},
+
+	//0x54
+	() => {
+		negA()
+		incPC()
+	},
+
+	//0x55
+	() => {
+		incPC()
+	},
+
+	//0x56
+	() => {
+		incPC()
+	},
+
+	//0x57
+	() => {
+		incPC()
+	},
+
+	//0x58
+	() => {
+		//in e,(c)
+		setE(handlePortRead(getC()))
+		setStdInFlags(getE())
+		incPC()
+	},
+
+	//0x59
+	() => {
+		//out (c),e
+		handlePortWrite(getC(), getE())
+		incPC()
+	},
+
+	//0x5A
+	() => {
+		//adc hl,de
+		oldHL = getHL()
+		set16reg("HL", getDE()+getCFlag())
+		setStdAddFlags16(oldHL, getDE()+getCFlag())
+		incPC()
+	},
+
+	//0x5B
+	() => {
+		//ld de,(**)
+		set16reg("DE", getRAM(getP12()))
+		addPC(3)
+	},
+
+	//0x5C
+	() => {
+		negA()
+		incPC()
+	},
+
+	//0x5D
+	() => {
+		incPC()
+	},
+
+	//0x5E
+	() => {
+		incPC()
+	},
+
+	//0x5F
+	() => {
+		//ld a,r
+		setA(Math.floor(Math.random() * 256))
+	},
+
+	//0x60
+	() => {
+		//in h,(c)
+		setH(handlePortRead(getC()))
+		setStdInFlags(getH())
+		incPC()
+	},
+
+	//0x61
+	() => {
+		//out (c),h
+		handlePortWrite(getC(), getH())
+		incPC()
+	},
+
+	//0x62
+	() => {
+		//sbc hl,hl
+		oldHL = getHL()
+		sub16reg("HL", oldHL+getCFlag())
+		setStdSubFlags16(oldHL, oldHL+getCFlag())
+		incPC()
+	},
+
+	//0x63
+	() => {
+		//ld (**),hl
+		setRAM(getP12(), getHL())
+		addPC(3)
+	},
+
+	//0x64
+	() => {
+		negA()
+		incPC()
+	},
+
+	//0x65
+	() => {
+		incPC()
+	},
+
+	//0x66
+	() => {
+		incPC()
+	},
+
+	//0x67
+	() => {
+		//rrd
+		ptA = (getA()&0xF)
+		ptB = (getRAM(getHL())&0xF0)
+		ptC = (getRAM(getHL())&0xF)
+
+		setA((getA()&0xF0) + ptC)
+		setRAM(getHL(), ptA*16 + ptB)
+	},
+
+	//0x68
+	() => {
+		//in l,(c)
+		setL(handlePortRead(getC()))
+		setStdInFlags(getL())
+		incPC()
+	},
+
+	//0x69
+	() => {
+		//out (c),l
+		handlePortWrite(getC(), getL())
+		incPC()
+	},
+
+	//0x6A
+	() => {
+		//adc hl,hl
+		oldHL = getHL()
+		set16reg("HL", oldHL+getCFlag())
+		setStdAddFlags16(oldHL, oldHL+getCFlag())
+		incPC()
+	},
+
+	//0x6B
+	() => {
+		//ld hl,(**)
+		set16reg("HL", getRAM(getP12()))
+		addPC(3)
+	},
+
+	//0x6C
+	() => {
+		negA()
+		incPC()
+	},
+
+	//0x6D
+	() => {
+		incPC()
+	},
+
+	//0x6E
+	() => {
+		incPC()
+	},
+
+	//0x6F
+	() => {
+		//rld
+		ptA = (getA()&0xF)
+		ptB = (getRAM(getHL())&0xF0)
+		ptC = (getRAM(getHL())&0xF)
+
+		setA((getA()&0xF0) + ptB)
+		setRAM(getHL(), ptC*16 + ptA)
+	},
+
+	//0x70
+	() => {
+		//in (c)
+		setStdInFlags(handlePortRead(getC()))
+		incPC()
+	},
+
+	//0x71
+	() => {
+		//out (c),0
+		handlePortWrite(getC(), 0)
+		incPC()
+	},
+
+	//0x72
+	() => {
+		//sbc hl,sp
+		oldHL = getHL()
+		sub16reg("HL", getSP()+getCFlag())
+		setStdSubFlags16(oldHL, getSP()+getCFlag())
+		incPC()
+	},
+
+	//0x73
+	() => {
+		//ld (**),sp
+		setRAM(getP12(), getSP())
+		addPC(3)
+	},
+
+	//0x74
+	() => {
+		negA()
+		incPC()
+	},
+
+	//0x75
+	() => {
+		incPC()
+	},
+
+	//0x76
+	() => {
+		incPC()
+	},
+
+	//0x77
+	() => {
+		incPC()
+	},
+
+	//0x78
+	() => {
+		//in a,(c)
+		setA(handlePortRead(getC()))
+		setStdInFlags(getA())
+		incPC()
+	},
+
+	//0x79
+	() => {
+		//out (c),a
+		handlePortWrite(getC(), getA())
+		incPC()
+	},
+
+	//0x7A
+	() => {
+		//adc hl,sp
+		oldHL = getHL()
+		set16reg("HL", getSP()+getCFlag())
+		setStdAddFlags16(oldHL, getSP()+getCFlag())
+		incPC()
+	},
+
+	//0x7B
+	() => {
+		//ld sp,(**)
+		setSP(getRAM(getP12()))
+		addPC(3)
+	},
+
+	//0x7C
+	() => {
+		negA()
+		incPC()
+	},
+
+	//0x7D
+	() => {
+		incPC()
+	},
+
+	//0x7E
+	() => {
+		incPC()
+	},
+
+	//0x7F
+	() => {
+		incPC()
+	},
+
+	//0x80-0x9F
+	null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,
+	null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,
+
+	//0xA0
+	() => {
+		//ldi
+		setRAM(getDE(), getRAM(getHL()))
+		incHL()
+		incDE()
+		decBC()
+	},
+
+	//0xA1
+	() => {
+		//cpi
+		
+	}
+
+]
 
 const execTable = [
 	//0x00
@@ -2132,7 +2607,7 @@ const execTable = [
 	//0xE3
 	() => {
 		oldHL = getHL()
-		set16reg("HL", getRAMatReg("SP"))
+		set16reg("HL", getRAMatSP())
 		setRAM(getSP(), oldHL)
 		incPC()
 	},
@@ -2215,7 +2690,12 @@ const execTable = [
 
 	//0xED
 	() => {
+		//EXTD
+		let operation = getP1()
+		incPC()
 
+		//exec instruction
+		extdTable[operation-0x40]()
 	},
 
 	//0xEE

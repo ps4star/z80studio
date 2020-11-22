@@ -291,7 +291,7 @@ function setL(b) {
 	registers.L.value = lzfill(intToHex(sys.L[0]), 2)
 }
 
-function incHL(n) {
+function incHL() {
 	sys.L[0]++
 	sys.H[0] += Number(sys.L[0] == 0)
 	if (!parseState.mode) return
@@ -305,6 +305,22 @@ function addHL(n) {
 	if (!parseState.mode) return
 	registers.H.value = lzfill(intToHex(sys.H[0]), 2)
 	registers.L.value = lzfill(intToHex(sys.L[0]), 2)
+}
+
+function incDE() {
+	sys.E[0]++
+	sys.D[0] += Number(sys.E[0] == 0)
+	if (!parseState.mode) return
+	registers.D.value = lzfill(intToHex(sys.D[0]), 2)
+	registers.E.value = lzfill(intToHex(sys.E[0]), 2)
+}
+
+function decBC() {
+	sys.C[0]++
+	sys.B[0] += Number(sys.C[0] == 0)
+	if (!parseState.mode) return
+	registers.B.value = lzfill(intToHex(sys.B[0]), 2)
+	registers.C.value = lzfill(intToHex(sys.C[0]), 2)
 }
 
 //flag update functions (also modify F)
@@ -364,6 +380,10 @@ function getRAMatReg(name) {
 
 function getRAMatHL() {
 	return sys.RAM[sys.H[0]*256 + sys.L[0]]
+}
+
+function getRAMatSP() {
+	return sys.RAM[sys.SP[0]]
 }
 
 //direct reg set instructions
@@ -807,45 +827,12 @@ editor.setOption("showPrintMargin", false)
 
 editor.session.setUseWrapMode(true)
 
+const defStr = ".cfg 00.type text\n.cfg 01.type audio\n.cfg 01.sampleRate 22050\n.cfg 02.type flashROM\n.cfg 02.src upload\n\n.define @port_prompt $00\n.define @port_sound $01\n.define @port_flash $02\n\njp _main\n\n@promptString:\n    .db \"Welcome to Z80 Studio. Right now an audio port is configured to handle unsigned 8-bit wav data @22.05KHz, provided via file upload from the user (you). Use the first couple lines in the editor to change the audio format/settings if you want.\"\n\n_PromptS:\n    ld a, (hl)\n    inc hl\n    cp $00\n    ret z\n    out (@port_prompt), a\n    jp _PromptS\n\n_PlaySound:\n    in a, (@port_flash)\n    cp $00\n    ret z\n    inc a\n    out (@port_sound), a\n    jp _PlaySound\n\n_main:\n    ld hl, @promptString\n    call _PromptS\n\n    call _PlaySound"
+
 if (localStorage['cont'] != 'undefined' && typeof localStorage['cont'] !== 'undefined') {
 	updateEditor(localStorage['cont'])
 } else {
-	updateEditor(`.cfg 00.type text
-.cfg 01.type audio
-.cfg 01.sampleRate 22050
-.cfg 02.type flashROM
-.cfg 02.src upload
-
-.define @port_prompt $00
-.define @port_sound $01
-.define @port_flash $02
-
-jp _main
-
-@promptString:
-	.db "Welcome to Z80 Studio. Right now an audio port is configured to handle unsigned 8-bit wav data @22.05KHz, provided via file upload from the user (you). Use the first couple lines in the editor to change the audio format/settings if you want."
-
-_PromptS:
-	ld a, (hl)
-	inc hl
-	cp $00
-	ret z
-	out (@port_prompt), a
-	jp _PromptS
-
-_PlaySound:
-	in a, (@port_flash)
-	cp $00
-	ret z
-	inc a
-	out (@port_sound), a
-	jp _PlaySound
-	
-_main:
-	ld hl, @promptString
-	call _PromptS
-
-	call _PlaySound`)
+	updateEditor(defStr)
 }
 
 document.getElementById("ace-editor").addEventListener('keydown', function(e) {
@@ -882,7 +869,8 @@ window.onkeydown = function(e) {
 
 window.onkeyup = function(e) {
 	localStorage['cont'] = editor.getValue()
-	delete keysDown[keysDown.indexOf(e.key)]
+	while (keysDown.indexOf(e.key) > -1)
+		delete keysDown[keysDown.indexOf(e.key)]
 }
 
 //get important elements

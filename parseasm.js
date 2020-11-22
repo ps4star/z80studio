@@ -11,10 +11,11 @@ String.prototype.replaceSeries = function(arr) {
 var parseState = {}
 
 function initParser(dt, mode) {
+	up.value = ""
 	mode = mode || false
 	clearSys()
 	let documentData = dt
-	parseState.lines = documentData.replace(/\/\*.+\*\//g, "").replace(/ {4}/g, "\t").replace(/\t/g, "").split("\n")
+	parseState.lines = documentData.replace(/\/\*.+\*\//g, "").replace(/ {4}/g, "\t").replace(/\t/g, "").replace(/ +$/g, "").replace(/\r\n/g, "\n").split("\n")
 	parseState.lines.push("")
 	parseState.derefedLines = []
 	parseState.ln = 0
@@ -79,8 +80,7 @@ let isRawDiff = false
 function grabSymbols() {
 	parseState.lines.forEach((line, idx) => {
 		if (line.length == 0) return
-		line = line.replace(/ +/g, " ")
-		if (line.charAt(line.length-1) == ":") {
+		if (line[line.length-1] == ":") {
 			parseState.primitiveSym.push(line.slice(0, line.length-1))
 		} else if (line.split(" ")[0].toLowerCase() == ".define") {
 			parseState.vars[line.split(" ")[1]] = line.split(" ")[2]
@@ -347,19 +347,22 @@ function parseLnStep() {
 function parseDocument(s) {
 
 	if (isFirstExec) {
-
 		s = s || editor.getValue()
 		initParser(s, false)
 		grabSymbols()
 		parseCfg()
-		document.body.onfocus = () => {
+		if (parseState.isUpload) {
+			document.body.onfocus = () => {
+				isFirstExec = false
+				callbackFunc = [
+					"parseDocument",
+					s
+				]
+			}
+			return
+		} else {
 			isFirstExec = false
-			callbackFunc = [
-				"parseDocument",
-				s
-			]
 		}
-		return
 	} else {
 		document.body.onfocus = () => {}
 	}
@@ -373,8 +376,6 @@ function parseDocument(s) {
 		exec()
 	}
 
-	updateRegisters()
-
 	console.timeEnd('execTime')
 
 	isFirstExec = true
@@ -382,7 +383,6 @@ function parseDocument(s) {
 	dumpAllPortBuffers()
 
 	clearCfg()
-	up.value = ""
 
 	editor.setReadOnly(false)
 }
@@ -425,6 +425,11 @@ goButton.onclick = () => {
 
 	parseDocument()
 
+	updateRegisters()
+
+	sys.SP[0] = 65535
+	registers16.SP.value = "FFFF"
+
 	editor.setReadOnly(false)
 }
 
@@ -440,13 +445,17 @@ stepButton.onclick = () => {
 		initParser(editor.getValue(), true)
 		grabSymbols()
 		parseCfg()
-		document.body.onfocus = () => {
+		if (parseState.isUpload) {
+			document.body.onfocus = () => {
+				isFirstExec = false
+				callbackFunc = [
+					"click-step"
+				]
+			}
+			return
+		} else {
 			isFirstExec = false
-			callbackFunc = [
-				"click-step"
-			]
 		}
-		return
 	} else {
 		document.body.onfocus = () => {}
 	}
@@ -480,7 +489,6 @@ stopButton.onclick = () => {
 	dumpAllPortBuffers()
 
 	clearCfg()
-	up.value = ""
 
 	editor.setReadOnly(false)
 }

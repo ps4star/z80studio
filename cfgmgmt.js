@@ -41,6 +41,7 @@ function parsePortData(name, p) {
 		let propVal = p[prop]
 		retObj[prop] = propVal
 	})
+
 	if (!("type" in retObj)) {
 		cfgError("No 'type' field specified for a port.")
 		return {}
@@ -68,6 +69,8 @@ function parsePortData(name, p) {
 			up.click()
 			modifyBuffer = name
 
+			parseState.isUpload = true
+
 			retObj.readPos = 0
 		}
 	} else {
@@ -84,6 +87,7 @@ function parsePortData(name, p) {
 }
 
 function modifyCfgComponent(component, newValue) {
+
 	let componentParts = component.split(".")
 
 	if (componentParts[0] == "envr") {
@@ -105,8 +109,14 @@ function modifyCfgComponent(component, newValue) {
 			exitWith("No such field " + component + " available for configuration.")
 			return
 		}
+		let parsedNewValue = newValue
+
+		try {
+			parsedNewValue = JSON.parse(newValue)
+		} catch(e) {}
+
 		if (!rawCfg.ports[componentParts[0]]) rawCfg.ports[componentParts[0]] = {}
-		rawCfg.ports[componentParts[0]][componentParts[1]] = newValue
+		rawCfg.ports[componentParts[0]][componentParts[1]] = parsedNewValue
 	}
 }
 
@@ -151,7 +161,7 @@ function dumpPortBuffer(port) {
 		alert("Port " + port +" EOE Output: " + String.fromCharCode(...portData.cBuffer))
 	} else if (portData.type == "audio") {
 		//init obj
-		audioCtx = new AudioContext({sampleRate: (portData.sampleRate || 44100)*2})
+		audioCtx = new AudioContext({sampleRate: 88200})
 
 		//plays audio from buffer
 
