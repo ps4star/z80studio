@@ -827,40 +827,22 @@ editor.setOption("showPrintMargin", false)
 
 editor.session.setUseWrapMode(true)
 
-const defStr = `.cfg 00.type text
-.cfg 01.type audio
-.cfg 02.type flashROM
-.cfg 02.src upload
+const defStr = `.cfg 00.type audio
 
-.define @port_prompt $00
-.define @port_sound $01
-.define @port_flash $02
+.define @port_sound $00
 
 jp _main
 
-@promptString:
-    .db "Welcome to Z80 Studio. Please upload an 8-bit wav file and this script will play it."
-
-_PromptS:
-    ld a, (hl)
-    inc hl
-    cp $00
-    ret z
-    out (@port_prompt), a
-    jp _PromptS
-
-_PlaySound:
-    in a, (@port_flash)
-    cp $00
-    ret z
-    out (@port_sound), a
-    jp _PlaySound
+_PlayWhiteNoise:
+	ld a, r
+	out (@port_sound), a
+	dec hl
+	ret z
+    jp _PlayWhiteNoise
 
 _main:
-    ld hl, @promptString
-    call _PromptS
-
-    call _PlaySound`
+	ld hl, $FFFF
+    call _PlayWhiteNoise`
 
 if (localStorage['cont'] != 'undefined' && typeof localStorage['cont'] !== 'undefined') {
 	updateEditor(localStorage['cont'])
