@@ -840,7 +840,6 @@ let keysDown = []
 
 window.onkeydown = function(e) {
 	keysDown.push(e.key)
-	localStorage['cont'] = editor.getValue()
 	if (e.key == "G" && keysDown.indexOf("Alt") > -1 && keysDown.indexOf("Shift") > -1) {
 		go_button.click()
 	} else if (e.key == "S" && keysDown.indexOf("Alt") > -1 && keysDown.indexOf("Shift") > -1) {
@@ -859,6 +858,7 @@ window.onkeydown = function(e) {
 }
 
 window.onkeyup = function(e) {
+	localStorage['cont'] = editor.getValue()
 	delete keysDown[keysDown.indexOf(e.key)]
 }
 
