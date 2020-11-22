@@ -827,7 +827,41 @@ editor.setOption("showPrintMargin", false)
 
 editor.session.setUseWrapMode(true)
 
-const defStr = ".cfg 00.type text\n.cfg 01.type audio\n.cfg 01.sampleRate 22050\n.cfg 02.type flashROM\n.cfg 02.src upload\n\n.define @port_prompt $00\n.define @port_sound $01\n.define @port_flash $02\n\njp _main\n\n@promptString:\n    .db \"Welcome to Z80 Studio. Right now an audio port is configured to handle unsigned 8-bit wav data @22.05KHz, provided via file upload from the user (you). Use the first couple lines in the editor to change the audio format/settings if you want.\"\n\n_PromptS:\n    ld a, (hl)\n    inc hl\n    cp $00\n    ret z\n    out (@port_prompt), a\n    jp _PromptS\n\n_PlaySound:\n    in a, (@port_flash)\n    cp $00\n    ret z\n    inc a\n    out (@port_sound), a\n    jp _PlaySound\n\n_main:\n    ld hl, @promptString\n    call _PromptS\n\n    call _PlaySound"
+const defStr = `.cfg 00.type text
+.cfg 01.type audio
+.cfg 01.sampleRate 22050
+.cfg 02.type flashROM
+.cfg 02.src upload
+
+.define @port_prompt $00
+.define @port_sound $01
+.define @port_flash $02
+
+jp _main
+
+@promptString:
+    .db "Welcome to Z80 Studio. Right now an audio port is configured to handle unsigned 8-bit wav data @22.05KHz, provided via file upload from the user (you). Use the first couple lines in the editor to change the audio format/settings if you want."
+
+_PromptS:
+    ld a, (hl)
+    inc hl
+    cp $00
+    ret z
+    out (@port_prompt), a
+    jp _PromptS
+
+_PlaySound:
+    in a, (@port_flash)
+    cp $00
+    ret z
+    out (@port_sound), a
+    jp _PlaySound
+
+_main:
+    ld hl, @promptString
+    call _PromptS
+
+    call _PlaySound`
 
 if (localStorage['cont'] != 'undefined' && typeof localStorage['cont'] !== 'undefined') {
 	updateEditor(localStorage['cont'])
