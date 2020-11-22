@@ -839,7 +839,7 @@ const defStr = `.cfg 00.type text
 jp _main
 
 @promptString:
-    .db "Welcome to Z80 Studio. Right now an audio port is configured to handle unsigned 8-bit wav data @22.05KHz, provided via file upload from the user (you). Use the first couple lines in the editor to change the audio format/settings if you want."
+    .db "Welcome to Z80 Studio. Right now an audio port is configured to handle unsigned 8-bit wav data, provided via file upload from the user (you). Use the first couple lines in the editor to change the audio format/settings if you want."
 
 _PromptS:
     ld a, (hl)
