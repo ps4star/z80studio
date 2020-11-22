@@ -10,7 +10,8 @@ String.prototype.replaceSeries = function(arr) {
 
 var parseState = {}
 
-function initParser(dt) {
+function initParser(dt, mode) {
+	mode = mode || false
 	clearSys()
 	let documentData = dt
 	parseState.lines = documentData.replace(/\/\*.+\*\//g, "").replace(/ {4}/g, "\t").replace(/\t/g, "").split("\n")
@@ -20,12 +21,11 @@ function initParser(dt) {
 	parseState.primitiveSym = []
 	parseState.vars = {}
 	parseState.sym = {}
+	parseState.mode = mode
 	parseState.totalProgramBytes = 0
 	parseState.cLoadAddr = 0
 	parseState.cParseAddr = 0
 }
-
-const opcodeSyms = ["ld", "jr", "daa", "ex", "exx", "jp", "call", "ret", "rst", "and", "or", "xor", "neg", "in", "out", "cpl", "rra", "rrca", "rla", "rlca", "rl", "rr", "sub", "add", "sbc", "adc", "cpir", "ldir", "pop", "push", "rrd", "rld", "cpir", "inir", "otir", "ldd", "cpd", "ind", "outd", "lddr", "cpdr", "indr", "otdr", "im", "retn", "bit", "res", "set", "sll", "sla", "sra", "srl", "rrc", "rlc", "cp", "dec", "inc", "nop", "ccf", "scf", "djnz"]
 
 var outputBuffer = []
 var coff = 0
@@ -64,7 +64,7 @@ function writeBufferToRAM() {
 		sys.RAM[idx] = byte
 	})
 
-	loadRAMtoTable()
+	loadRAMtoTable(null, parseState.mode)
 
 	//clears buffer
 	outputBuffer = []
@@ -79,8 +79,18 @@ function parse() {
 		line = line.replace(/ +/g, " ")
 		if (line.charAt(line.length-1) == ":") {
 			parseState.primitiveSym.push(line.slice(0, line.length-1))
-		} else if (line.split(" ")[0] == ".define") {
+		} else if (line.split(" ")[0].toLowerCase() == ".define") {
 			parseState.vars[line.split(" ")[1]] = line.split(" ")[2]
+			parseState.lines[idx] = ""
+		} else if (line.split(" ")[0].toLowerCase() == ".cfg") {
+			if (line.split(" ").length < 3) {
+				exitWith("Invalid .cfg statement on line " + idx + ". Too few arguments given. Example usage: .cfg envr.audioPortSampleRate 22050")
+			}
+			let property = line.split(" ")[1]
+			let newValue = line.split(" ")[2]
+
+			modifyCfgComponent(property, newValue)
+
 			parseState.lines[idx] = ""
 		}
 	})
@@ -306,20 +316,22 @@ function parseLnStep() {
 	highlightCell((parseInt(cPC.slice(2, 4), 16) % 16), Math.floor(parseInt(cPC.slice(2, 4), 16) / 16))
 
 	//runs exec
-	let eResult = exec()
+	for (let i = 0; i < cfg.envr.stepIncrement; i++) {
+		let eResult = exec()
 
-	if (eResult.isJump) {
-		let run = true
-		Object.keys(bytePositions).forEach(bytePos => {
-			if (!run) return
-			let cbyte = bytePositions[bytePos]
-			if (getPC() == cbyte) {
-				parseState.ln = bytePos
-				run = false
-			}
-		})
-	} else {
-		parseState.ln++
+		if (eResult.isJump) {
+			let run = true
+			Object.keys(bytePositions).forEach(bytePos => {
+				if (!run) return
+				let cbyte = bytePositions[bytePos]
+				if (getPC() == cbyte) {
+					parseState.ln = bytePos
+					run = false
+				}
+			})
+		} else {
+			parseState.ln++
+		}
 	}
 
 	return 0 //OK
@@ -327,13 +339,17 @@ function parseLnStep() {
 
 function parseDocument(s) {
 	s = s || editor.getValue()
-	initParser(s)
+	initParser(s, false)
 	parse()
 	assemble()
+
+	console.time('execTime')
 
 	while (getPC() < parseState.totalProgramBytes) {
 		exec()
 	}
+
+	console.timeEnd('execTime')
 
 	stopButton.click()
 }
@@ -379,7 +395,7 @@ stepButton.onclick = () => {
 	editor.setReadOnly(true)
 
 	if (Object.keys(parseState).length < 1) {
-		initParser(editor.getValue())
+		initParser(editor.getValue(), true)
 		parse()
 		assemble()
 	}

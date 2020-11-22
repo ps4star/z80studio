@@ -1,9 +1,20 @@
 {
 	"envr" : {
-		"jpLimit" : -1,
-		"onReadonlyWrite" : "error",
-		"forbiddenRAM" : [],
-		"autoDownloads" : []
+		"stepIncrement" : 1,
+		"enablePorts" : true
 	},
-	"ports" : {}
+	"ports" : {
+		"00" : {
+			"type" : "text"
+		},
+		"01" : {
+			"type" : "audio",
+			"sampleRate" : 22050,
+			"bufferSize" : 256
+		},
+		"02" : {
+			"type" : "flashROM",
+			"src" : "bytearray:50 50 40 40 30 20 10 00"
+		}
+	}
 }

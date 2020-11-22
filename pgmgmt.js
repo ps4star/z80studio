@@ -84,33 +84,33 @@ var sys = {}
 function initSys() {
 	sys = {
 		//RAM
-		RAM : new Uint8Array(new ArrayBuffer(RAMsize)),
+		RAM : new Uint8Array(RAMsize),
 
 		//Registers
-		A : new Uint8Array(new ArrayBuffer(1)),
-		B : new Uint8Array(new ArrayBuffer(1)),
-		C : new Uint8Array(new ArrayBuffer(1)),
-		D : new Uint8Array(new ArrayBuffer(1)),
-		E : new Uint8Array(new ArrayBuffer(1)),
-		F : new Uint8Array(new ArrayBuffer(1)),
-		H : new Uint8Array(new ArrayBuffer(1)),
-		L : new Uint8Array(new ArrayBuffer(1)),
+		A : new Uint8Array(1),
+		B : new Uint8Array(1),
+		C : new Uint8Array(1),
+		D : new Uint8Array(1),
+		E : new Uint8Array(1),
+		F : new Uint8Array(1),
+		H : new Uint8Array(1),
+		L : new Uint8Array(1),
 
 		//Shadow Registers
-		A_ : new Uint8Array(new ArrayBuffer(1)),
-		B_ : new Uint8Array(new ArrayBuffer(1)),
-		C_ : new Uint8Array(new ArrayBuffer(1)),
-		D_ : new Uint8Array(new ArrayBuffer(1)),
-		E_ : new Uint8Array(new ArrayBuffer(1)),
-		F_ : new Uint8Array(new ArrayBuffer(1)),
-		H_ : new Uint8Array(new ArrayBuffer(1)),
-		L_ : new Uint8Array(new ArrayBuffer(1)),
+		A_ : new Uint8Array(1),
+		B_ : new Uint8Array(1),
+		C_ : new Uint8Array(1),
+		D_ : new Uint8Array(1),
+		E_ : new Uint8Array(1),
+		F_ : new Uint8Array(1),
+		H_ : new Uint8Array(1),
+		L_ : new Uint8Array(1),
 
 		//Other
-		SP : new Uint16Array(new ArrayBuffer(2)),
-		PC : new Uint16Array(new ArrayBuffer(2)),
-		IX : new Uint16Array(new ArrayBuffer(2)),
-		IY : new Uint16Array(new ArrayBuffer(2)),
+		SP : new Uint16Array(2),
+		PC : new Uint16Array(2),
+		IX : new Uint16Array(2),
+		IY : new Uint16Array(2),
 
 		//Ports
 		ports : {}
@@ -241,45 +241,58 @@ function getCFlag() {
 //register update functions
 function setA(b) {
 	sys.A[0] = b
+	if (!parseState.mode) return
 	registers.A.value = lzfill(intToHex(sys.A[0]), 2)
 }
 
 function setB(b) {
 	sys.B[0] = b
+	if (!parseState.mode) return
 	registers.B.value = lzfill(intToHex(sys.B[0]), 2)
 }
 
 function setC(b) {
 	sys.C[0] = b
+	if (!parseState.mode) return
 	registers.C.value = lzfill(intToHex(sys.C[0]), 2)
 }
 
 function setD(b) {
 	sys.D[0] = b
+	if (!parseState.mode) return
 	registers.D.value = lzfill(intToHex(sys.D[0]), 2)
 }
 
 function setE(b) {
 	sys.E[0] = b
+	if (!parseState.mode) return
 	registers.E.value = lzfill(intToHex(sys.E[0]), 2)
 }
 
 function setH(b) {
 	sys.H[0] = b
+	if (!parseState.mode) return
 	registers.H.value = lzfill(intToHex(sys.H[0]), 2)
 }
 
 function setL(b) {
 	sys.L[0] = b
+	if (!parseState.mode) return
+	registers.L.value = lzfill(intToHex(sys.L[0]), 2)
+}
+
+function incHL(n) {
+	sys.L[0]++
+	sys.H[0] += Number(sys.L[0] == 0)
+	if (!parseState.mode) return
+	registers.H.value = lzfill(intToHex(sys.H[0]), 2)
 	registers.L.value = lzfill(intToHex(sys.L[0]), 2)
 }
 
 function addHL(n) {
 	sys.L[0] += n
-	if (sys.L[0] == 0) {
-		sys.H[0]++
-	}
-
+	sys.H[0] += Number(sys.L[0]-n > sys.L[0])
+	if (!parseState.mode) return
 	registers.H.value = lzfill(intToHex(sys.H[0]), 2)
 	registers.L.value = lzfill(intToHex(sys.L[0]), 2)
 }
@@ -287,35 +300,42 @@ function addHL(n) {
 //flag update functions (also modify F)
 function setSFlag(bit) {
 	sys.F[0] = modifyBit(sys.F[0], 7, bit)
+	if (!parseState.mode) return
 	flags.S.value = bit.toString()
 }
 
 function setZFlag(bit) {
 	sys.F[0] = modifyBit(sys.F[0], 6, bit)
+	if (!parseState.mode) return
 	flags.Z.value = bit.toString()
 }
 
 function setHFlag(bit) {
 	sys.F[0] = modifyBit(sys.F[0], 4, bit)
+	if (!parseState.mode) return
 	flags.H.value = bit.toString()
 }
 
 function setPFlag(bit) {
 	sys.F[0] = modifyBit(sys.F[0], 2, bit)
+	if (!parseState.mode) return
 	flags.P.value = bit.toString()
 }
 
 function setNFlag(bit) {
 	sys.F[0] = modifyBit(sys.F[0], 1, bit)
+	if (!parseState.mode) return
 	flags.N.value = bit.toString()
 }
 
 function setCFlag(bit) {
 	sys.F[0] = modifyBit(sys.F[0], 0, bit)
+	if (!parseState.mode) return
 	flags.C.value = bit.toString()
 }
 
 function updateF() {
+	if (!parseState.mode) return
 	registers.F.value = lzfill(sys.F[0].toString(16), 2)
 }
 
@@ -332,6 +352,10 @@ function getRAMatReg(name) {
 	return sys.RAM[sys[name.charAt(0)][0]*256 + sys[name.charAt(1)][0]]
 }
 
+function getRAMatHL() {
+	return sys.RAM[sys.H[0]*256 + sys.L[0]]
+}
+
 //direct reg set instructions
 function setReg(name, val) {
 	sys[name][0] = val
@@ -345,26 +369,26 @@ function set16reg(name, val) {
 
 	sys[c0][0] = Math.floor(val / 256)
 	sys[c1][0] = val % 256
-
+	if (!parseState.mode) return
 	registers[c0].value = lzfill(sys[c0][0].toString(16).slice(0, 2), 2)
 	registers[c1].value = lzfill(sys[c1][0].toString(16), 2)
 }
 
 function setSP(val) {
 	sys.SP[0] = val
+	if (!parseState.mode) return
 	registers16.SP.value = lzfill(sys.SP[0].toString(16), 4)
 }
 
 function addSP(val) {
-	sys.SP[0] = (sys.SP[0] + val) % 65536
+	sys.SP[0] += val
+	if (!parseState.mode) return
 	registers16.SP.value = lzfill(sys.SP[0].toString(16), 4)
 }
 
 function subSP(val) {
 	sys.SP[0] -= val
-	if (sys.SP[0] < 0) {
-		sys.SP[0] = (0x10000 + sys.SP[0])
-	}
+	if (!parseState.mode) return
 	registers16.SP.value = lzfill(sys.SP[0].toString(16), 4)
 }
 
@@ -383,6 +407,8 @@ function pushStack(n) {
 	sys.SP[0]--
 	sys.RAM[sys.SP[0]] = l
 
+	if (!parseState.mode) return
+
 	registers16.SP.value = lzfill(sys.SP[0].toString(16), 4)
 	loadRAMtoTable()
 }
@@ -393,6 +419,7 @@ function popStack() {
 	sys.SP[0]++
 	retVal += sys.RAM[sys.SP[0]]*256
 	sys.SP[0]++
+	if (!parseState.mode) return retVal
 	registers16.SP.value = lzfill(sys.SP[0].toString(16), 4)
 	return retVal
 }
@@ -400,26 +427,31 @@ function popStack() {
 //RAM mgmt
 function setRAM(addr, byte) {
 	sys.RAM[addr] = byte
+	if (!parseState.mode) return
 	loadRAMtoTable()
 }
 
 function addRAM(addr, val) {
 	sys.RAM[addr] += val
+	if (!parseState.mode) return
 	loadRAMtoTable()
 }
 
 function subRAM(addr, val) {
 	sys.RAM[addr] -= val
+	if (!parseState.mode) return
 	loadRAMtoTable()
 }
 
 function addReg(name, val) {
 	sys[name][0] += val
+	if (!parseState.mode) return
 	registers[name].value = lzfill(intToHex(sys[name][0]), 2)
 }
 
 function subReg(name, val) {
 	sys[name][0] -= val
+	if (!parseState.mode) return
 	registers[name].value = lzfill(intToHex(sys[name][0]), 2)
 }
 
@@ -437,8 +469,9 @@ function add16reg(name, value) {
 	let l = totalValue.slice(2, 4)
 
 	sys[c0][0] = parseInt(h, 16)
-	registers[c0].value = h
 	sys[c1][0] = parseInt(l, 16)
+	if (!parseState.mode) return
+	registers[c0].value = h
 	registers[c1].value = l
 }
 
@@ -454,8 +487,9 @@ function sub16reg(name, value) {
 	totalValue = lzfill(intToHex(newIntValue), 4)
 
 	sys[name.charAt(0)][0] = parseInt(totalValue.slice(0, 2), 16)
-	registers[name.charAt(0)].value = lzfill(totalValue.slice(0, 2), 2)
 	sys[name.charAt(1)][0] = parseInt(totalValue.slice(2, 4), 16)
+	if (!parseState.mode) return
+	registers[name.charAt(0)].value = lzfill(totalValue.slice(0, 2), 2)
 	registers[name.charAt(1)].value = lzfill(totalValue.slice(2, 4), 2)
 }
 
@@ -647,7 +681,8 @@ function highlightCell(col, row) {
 	getRAMcell(col, row).style.backgroundColor = "red"
 }
 
-function loadRAMtoTable(requestedCellAddr) {
+function loadRAMtoTable(requestedCellAddr, mode) {
+	if (mode != undefined && !mode) return
 	requestedCellAddr = requestedCellAddr || null
 	if (requestedCellAddr != null) processViewer.scrollBy(0, 999)
 	for (let row = 0; row < 16; row++) {
