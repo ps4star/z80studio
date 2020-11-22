@@ -48,7 +48,7 @@ input[type=text] {
 .tooltip .tooltiptext {
   visibility: hidden;
   font-size: 12px;
-  width: 60px;
+  width: 120px;
   background-color: white;
   color: #000;
   text-align: center;

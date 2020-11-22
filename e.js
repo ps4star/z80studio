@@ -684,6 +684,8 @@ const execTable = [
 		} else {
 			setCFlag(0)
 		}
+
+		incPC()
 	},
 
 	//0x28
@@ -834,7 +836,7 @@ const execTable = [
 
 	//0x3C
 	() => {
-		addReg("A", 0x01)
+		incA()
 		setStdIncFlags8(getA())
 		incPC()
 	},
@@ -2067,8 +2069,7 @@ const execTable = [
 
 	//0xDB
 	() => {
-		//in a,(*)
-		//yeah uhhh
+		setA(handlePortRead(getP1()))
 		addPC(2)
 	},
 
@@ -2356,6 +2357,8 @@ const execTable = [
 ]
 
 function exec() {
+	eResult.isJump = false
+
 	//execute instruction
 	execTable[getNextByte()]()
 

@@ -74,6 +74,10 @@ const RAMsize = 65536
 
 var parsedINS = {}
 
+var modifyBuffer = ""
+var rfmode = "editor"
+var lastReadData = ""
+
 //constructs a 2nd instruction set object which is regex-compatible
 Object.keys(INS).forEach(k => {
 	parsedINS[k.replace(/\*/g, "[0-9a-fA-F]{2}")] = INS[k]
@@ -241,6 +245,12 @@ function getCFlag() {
 //register update functions
 function setA(b) {
 	sys.A[0] = b
+	if (!parseState.mode) return
+	registers.A.value = lzfill(intToHex(sys.A[0]), 2)
+}
+
+function incA() {
+	sys.A[0]++
 	if (!parseState.mode) return
 	registers.A.value = lzfill(intToHex(sys.A[0]), 2)
 }
@@ -523,20 +533,32 @@ function updateEditorLang() {
 	updateEditor(localStorage['cont'])
 }
 
-//reads in a file to the editor
+//reads in a file
 function readF(e) {
 	let input = e.target
 
 	let reader = new FileReader()
 	reader.onload = function() {
 		let d = reader.result
-		if (mode == "editor-upload")
+		if (rfmode == "editor") {
 			updateEditor(d)
-		else
+		} else if (rfmode == "cfg") {
 			setCfg(JSON.parse(d))
+		} else {
+			sys.ports[modifyBuffer].cBuffer = new Uint8Array(d)
+			if (callbackFunc[0] == "click-step")
+				stepButton.click()
+			 else
+				parseDocument(callbackFunc[1])
+		}
+
 	}
 	
-	reader.readAsText(input.files[0])
+	if (rfmode == "editor" || rfmode == "cfg") {
+		reader.readAsText(input.files[0])
+	} else {
+		reader.readAsArrayBuffer(input.files[0])
+	}
 }
 
 function makeOverwriteByte(target, cID) {
@@ -703,7 +725,10 @@ function loadRAMtoTable(requestedCellAddr, mode) {
 
 function updateRegisters() {
 	Object.keys(registers).forEach(r => {
-		registers[name].value = sys[name]
+		registers[r].value = lzfill(sys[r][0].toString(16), 2)
+	})
+	Object.keys(registers16).forEach(r => {
+		registers16[r].value = lzfill(sys[r][0].toString(16), 4)
 	})
 	flags.S.value = getBit(sys.F[0], 7)
 	flags.Z.value = getBit(sys.F[0], 6)
@@ -749,6 +774,19 @@ function clearSys() {
 	initPorts()
 }
 
+function clearSys1() {
+	initSys()
+	initPorts()
+}
+
+function clearSys2() {
+	loadRAMtoTable()
+	clearRegisters()
+	clearOtherRegisters()
+
+	registers16.SP.value = "FFFF"
+}
+
 function clearRAMcellHighlight() {
 	getRAMcell(cHighlight[0], cHighlight[1]).style.backgroundColor = "#d3d3d3"
 }
@@ -782,13 +820,13 @@ let keysDown = []
 window.onkeydown = function(e) {
 	keysDown.push(e.key)
 	localStorage['cont'] = editor.getValue()
-	if (e.key == "F2") {
+	if (e.key == "G" && keysDown.indexOf("Alt") > -1 && keysDown.indexOf("Shift") > -1) {
 		go_button.click()
-	} else if (e.key == "F4") {
+	} else if (e.key == "S" && keysDown.indexOf("Alt") > -1 && keysDown.indexOf("Shift") > -1) {
 		step_button.click()
-	} else if (e.key == "F8") {
+	} else if (e.key == "X" && keysDown.indexOf("Alt") > -1 && keysDown.indexOf("Shift") > -1) {
 		stop_button.click()
-	} else if (e.key == "F9") {
+	} else if (e.key == "H" && keysDown.indexOf("Alt") > -1 && keysDown.indexOf("Shift") > -1) {
 		help_button.click()
 	} else if (e.key == "+" && keysDown.indexOf("Alt") > -1 && keysDown.indexOf("Shift") > -1) {
 		editor.setFontSize(parseInt(editor.getFontSize()) + 1)

@@ -55,6 +55,7 @@ function downCfgTempNoComments() {
 }
 
 function importCfg() {
+	rfmode = "cfg"
 	up.click()
 }
 
@@ -86,5 +87,6 @@ function saveASM() {
 }
 
 function loadPrgm() {
+	rfmode = "editor"
 	up.click()
 }

@@ -30,6 +30,8 @@ function initParser(dt, mode) {
 var outputBuffer = []
 var coff = 0
 
+var callbackFunc = []
+
 function bufferByte(byte) {
 	outputBuffer.push(byte)
 	parseState.cLoadAddr++
@@ -72,8 +74,9 @@ function writeBufferToRAM() {
 
 var bytePositions = {}
 
-function parse() {
-	//STEP 1: literally just make a list of symbols (+ delete .define statements)
+let isRawDiff = false
+
+function grabSymbols() {
 	parseState.lines.forEach((line, idx) => {
 		if (line.length == 0) return
 		line = line.replace(/ +/g, " ")
@@ -90,11 +93,15 @@ function parse() {
 			let newValue = line.split(" ")[2]
 
 			modifyCfgComponent(property, newValue)
+			isRawDiff = true
 
 			parseState.lines[idx] = ""
 		}
 	})
+}
 
+function parse() {
+	//STEP 1: literally just make a list of symbols (+ delete .define statements)
 	bytePositions = {}
 
 	//STEP 2: parse
@@ -325,7 +332,7 @@ function parseLnStep() {
 				if (!run) return
 				let cbyte = bytePositions[bytePos]
 				if (getPC() == cbyte) {
-					parseState.ln = bytePos
+					parseState.ln = parseInt(bytePos)
 					run = false
 				}
 			})
@@ -338,8 +345,25 @@ function parseLnStep() {
 }
 
 function parseDocument(s) {
-	s = s || editor.getValue()
-	initParser(s, false)
+
+	if (isFirstExec) {
+
+		s = s || editor.getValue()
+		initParser(s, false)
+		grabSymbols()
+		parseCfg()
+		document.body.onfocus = () => {
+			isFirstExec = false
+			callbackFunc = [
+				"parseDocument",
+				s
+			]
+		}
+		return
+	} else {
+		document.body.onfocus = () => {}
+	}
+
 	parse()
 	assemble()
 
@@ -349,9 +373,18 @@ function parseDocument(s) {
 		exec()
 	}
 
+	updateRegisters()
+
 	console.timeEnd('execTime')
 
-	stopButton.click()
+	isFirstExec = true
+
+	dumpAllPortBuffers()
+
+	clearCfg()
+	up.value = ""
+
+	editor.setReadOnly(false)
 }
 
 function clearMarkers() {
@@ -381,24 +414,49 @@ var goButton = document.getElementById("go-button")
 var stepButton = document.getElementById("step-button")
 var stopButton = document.getElementById("stop-button")
 
+let isFirstExec = true
+
 //binds functions to each button
 goButton.onclick = () => {
+
 	editor.setReadOnly(true)
+
+	initCfg()
 
 	parseDocument()
 
 	editor.setReadOnly(false)
 }
 
+let flag
+
 stepButton.onclick = () => {
 
 	editor.setReadOnly(true)
 
-	if (Object.keys(parseState).length < 1) {
+	if (isFirstExec) {
+		flag = true
+		initCfg()
 		initParser(editor.getValue(), true)
+		grabSymbols()
+		parseCfg()
+		document.body.onfocus = () => {
+			isFirstExec = false
+			callbackFunc = [
+				"click-step"
+			]
+		}
+		return
+	} else {
+		document.body.onfocus = () => {}
+	}
+
+	if (flag) {
 		parse()
 		assemble()
 	}
+
+	flag = false
 
 	if (parseState.ln >= parseState.lines.length) {
 		stopButton.click()
@@ -417,7 +475,12 @@ stopButton.onclick = () => {
 	resetAll()
 	clearSys()
 
+	isFirstExec = true
+
 	dumpAllPortBuffers()
+
+	clearCfg()
+	up.value = ""
 
 	editor.setReadOnly(false)
 }
