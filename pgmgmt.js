@@ -803,8 +803,29 @@ editor.session.setMode("ace/mode/assembly_x86")
 
 editor.setFontSize(localStorage['fsize'] || 20)
 
-if (localStorage['cont'] != undefined && typeof localStorage['cont'] !== 'undefined') {
+if (localStorage['cont'] != 'undefined' && typeof localStorage['cont'] !== 'undefined') {
 	updateEditor(localStorage['cont'])
+} else {
+	updateEditor(`.cfg 00.type audio
+.cfg 00.sampleRate 22050
+.cfg 01.type flashROM
+.cfg 01.src upload
+
+.define @port_sound $00
+.define @port_flash $01
+
+jp _main
+
+_PlaySound:
+	in a, (@port_flash)
+	cp $00
+	ret z
+	inc a
+	out (@port_sound), a
+	jp _PlaySound
+	
+_main:
+	call _PlaySound`)
 }
 
 document.getElementById("ace-editor").addEventListener('keydown', function(e) {
