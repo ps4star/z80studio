@@ -571,4 +571,7 @@ var INS = {
 	"set 7,l" : [1, 0xCB, 0xFD],
 	"set 7,(hl)" : [1, 0xCB, 0xFE],
 	"set 7,a" : [1, 0xCB, 0xFF],
+
+	//EDXX
+	"ld a,r" : [1, 0xED, 0x5F]
 }
