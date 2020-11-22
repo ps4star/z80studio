@@ -803,18 +803,35 @@ editor.session.setMode("ace/mode/assembly_x86")
 
 editor.setFontSize(localStorage['fsize'] || 20)
 
+editor.setOption("showPrintMargin", false)
+
+editor.session.setUseWrapMode(true)
+
 if (localStorage['cont'] != 'undefined' && typeof localStorage['cont'] !== 'undefined') {
 	updateEditor(localStorage['cont'])
 } else {
-	updateEditor(`.cfg 00.type audio
-.cfg 00.sampleRate 22050
-.cfg 01.type flashROM
-.cfg 01.src upload
+	updateEditor(`.cfg 00.type text
+.cfg 01.type audio
+.cfg 01.sampleRate 22050
+.cfg 02.type flashROM
+.cfg 02.src upload
 
-.define @port_sound $00
-.define @port_flash $01
+.define @port_prompt $00
+.define @port_sound $01
+.define @port_flash $02
 
 jp _main
+
+@promptString:
+	.db "Welcome to Z80 Studio. Right now an audio port is configured to handle unsigned 8-bit wav data @22.05KHz, provided via file upload from the user (you). Use the first couple lines in the editor to change the audio format/settings if you want."
+
+_PromptS:
+	ld a, (hl)
+	inc hl
+	cp $00
+	ret z
+	out (@port_prompt), a
+	jp _PromptS
 
 _PlaySound:
 	in a, (@port_flash)
@@ -825,6 +842,9 @@ _PlaySound:
 	jp _PlaySound
 	
 _main:
+	ld hl, @promptString
+	call _PromptS
+
 	call _PlaySound`)
 }
 
@@ -854,6 +874,9 @@ window.onkeydown = function(e) {
 	} else if (e.key == "_" && keysDown.indexOf("Alt") > -1 && keysDown.indexOf("Shift") > -1) {
 		editor.setFontSize(parseInt(editor.getFontSize()) - 1)
 		localStorage['fsize'] = editor.getFontSize()
+	} else if (e.key == "F11") {
+		e.preventDefault()
+		editor.container.webkitRequestFullscreen()
 	}
 }
 
