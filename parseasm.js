@@ -15,7 +15,7 @@ function initParser(dt, mode) {
 	mode = mode || false
 	clearSys()
 	let documentData = dt
-	parseState.lines = documentData.replace(/\/\*.+\*\//g, "").replace(/ {4}/g, "\t").replace(/\t/g, "").replace(/ +$/g, "").replace(/\r\n/g, "\n").split("\n")
+	parseState.lines = documentData.replace(/\/\*.+\*\//g, "").replace(/ {4}/g, "\t").replace(/\t/g, "").replace(/ +$/g, "").replace(/\r\n/g, "\n").replace(/^ +/g, "").split("\n")
 	parseState.lines.push("")
 	parseState.derefedLines = []
 	parseState.ln = 0
@@ -90,7 +90,7 @@ function grabSymbols() {
 				exitWith("Invalid .cfg statement on line " + idx + ". Too few arguments given. Example usage: .cfg envr.audioPortSampleRate 22050")
 			}
 			let property = line.split(" ")[1]
-			let newValue = line.split(" ")[2]
+			let newValue = line.split(" ").slice(2).join(" ")
 
 			modifyCfgComponent(property, newValue)
 			isRawDiff = true

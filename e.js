@@ -578,6 +578,7 @@ const extdTable = [
 	() => {
 		//ld a,r
 		setA(Math.floor(Math.random() * 256))
+		incPC()
 	},
 
 	//0x60
@@ -815,7 +816,7 @@ const extdTable = [
 	//0xA1
 	() => {
 		//cpi
-		
+		setStdSubFlags8()
 	}
 
 ]
