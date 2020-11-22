@@ -829,7 +829,6 @@ editor.session.setUseWrapMode(true)
 
 const defStr = `.cfg 00.type text
 .cfg 01.type audio
-.cfg 01.sampleRate 22050
 .cfg 02.type flashROM
 .cfg 02.src upload
 
