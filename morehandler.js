@@ -1,4 +1,5 @@
 var sCover = document.getElementById("s-cover")
+var fCover = document.getElementById("s-cover-files")
 var up = document.getElementById("upload-diag")
 
 function popupMoreMenu() {
@@ -7,9 +8,21 @@ function popupMoreMenu() {
 	editor.blur()
 }
 
+function popupFilesMenu() {
+	fCover.style.display = "block"
+	fCover.focus()
+	editor.blur()
+}
+
 function closeMoreMenu() {
 	sCover.style.display = "none"
 	sCover.blur()
+	editor.focus()
+}
+
+function closeFilesMenu() {
+	fCover.style.display = "none"
+	fCover.blur()
 	editor.focus()
 }
 
@@ -42,21 +55,6 @@ function downloadURI(uri, name) {
 	document.body.appendChild(link);
 	link.click();
 	document.body.removeChild(link);
-}
-
-function downCfgTemp() {
-	//download config template
-	download('template.json', 'template.json')
-}
-
-function downCfgTempNoComments() {
-	//download config template w/o comments
-	download('template_nocomments.json', 'template_nocomments.json')
-}
-
-function importCfg() {
-	rfmode = "cfg"
-	up.click()
 }
 
 function openHelp() {

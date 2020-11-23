@@ -953,9 +953,10 @@ const execTable = [
 
 	//0x10
 	() => {
-		subReg("B", 0x01)
+		setB(getB()-1)
 		if (getB() != 0) {
 			addPC(handleSignedUint8(getP1()))
+			eResult.isJump = true
 		} else {
 			addPC(2)
 		}

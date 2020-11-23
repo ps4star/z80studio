@@ -10,12 +10,16 @@ String.prototype.replaceSeries = function(arr) {
 
 var parseState = {}
 
+function doConversions(s) {
+	return s.replace(/\/\*.+\*\//g, "").replace(/ {4}/g, "\t").replace(/\t/g, "").replace(/ +$/g, "").replace(/\r\n/g, "\n").replace(/^ +/g, "")
+}
+
 function initParser(dt, mode) {
 	up.value = ""
 	mode = mode || false
 	clearSys()
 	let documentData = dt
-	parseState.lines = documentData.replace(/\/\*.+\*\//g, "").replace(/ {4}/g, "\t").replace(/\t/g, "").replace(/ +$/g, "").replace(/\r\n/g, "\n").replace(/^ +/g, "").split("\n")
+	parseState.lines = doConversions(documentData).split("\n")
 	parseState.lines.push("")
 	parseState.derefedLines = []
 	parseState.ln = 0
@@ -78,6 +82,43 @@ var bytePositions = {}
 let isRawDiff = false
 
 function grabSymbols() {
+	//de-ref incs
+	for (let i = 0; i < parseState.lines.length; i++) {
+		let line = parseState.lines[i]
+		if (line.split(" ")[0].toLowerCase() == ".inc") {
+
+			let nameSection = line.split(" ").slice(1).join(" ")
+			let fname = ""
+			let c = 1
+			if (nameSection.charAt(0).replace('"', "'") == "'") {
+				while (c < nameSection.length) {
+					let char = nameSection[c].replace('"', "'")
+					if (char == "'") {
+						break
+					}
+					fname += char
+					c++
+				}
+
+				if (Object.keys(cFiles).indexOf(fname) > -1) {
+					parseState.lines[i] = ""
+					parseState.lines.splice(i, 0, doConversions(cFiles[fname]).split("\n"))
+					parseState.lines = parseState.lines.flat()
+				} else {
+					exitWith("Unknown file " + fname + ". Did you import it in the Files menu?")
+				}
+
+			} else {
+				exitWith(".inc syntax error. Must use quotation marks around file name.")
+				return
+			}
+		} else if (line.split(" ")[0].toLowerCase() == ".binc" || line.split(" ")[0].toLowerCase() == ".incbin") {
+			//includes binary data
+		}
+	}
+
+	console.log(parseState.lines)
+
 	parseState.lines.forEach((line, idx) => {
 		if (line.length == 0) return
 		if (line[line.length-1] == ":") {
@@ -100,6 +141,14 @@ function grabSymbols() {
 	})
 }
 
+function calcRel(origin, destination) {
+	if (origin > destination) {
+		return (0x100 - (origin - destination))
+	} else {
+		return (destination - origin)
+	}
+}
+
 function parse() {
 	//STEP 1: literally just make a list of symbols (+ delete .define statements)
 	bytePositions = {}
@@ -108,7 +157,7 @@ function parse() {
 	parseState.lines.forEach((line, idx) => {
 		if (line.length == 0) return
 		//removes all comments
-		line = line.replace(/;.+/g, "").replace(/\/\/.+/g, "").replace(/ +$/, "")
+		line = line.replace(/ +$/, "")
 		if (line.split(" ")[0].toLowerCase() == ".db") {
 			let args = line.split(" ")
 			if (args[1].charAt(0) == "\"" || args[1].charAt(0) == "'") {
@@ -140,6 +189,9 @@ function parse() {
 							finalDt += onlyString.charAt(c)
 						}
 					}
+					if (onlyString.charAt(c) != "\"" && c == onlyString.length) {
+						exitWith(".db <string> must end with a quotation mark. Error on line " + line)
+					}
 					c++
 				}
 				bufferRawByteArray(stringToASCII(finalDt))
@@ -155,6 +207,7 @@ function parse() {
 			}
 			return
 		}
+		line = line.replace(/\/\/.+/g, "").replace(/;.+/g, "")
 		//rep .define constants
 		Object.keys(parseState.vars).forEach(v => {
 			line = line.replace(v, parseState.vars[v])
@@ -170,7 +223,7 @@ function parse() {
 			if (strucLn.charAt(strucLn.length - 1) == ":") {
 				return
 			}
-			if (strucLn.split(" ")[0].toLowerCase() == "jr") {
+			if (strucLn.split(" ")[0].toLowerCase() == "jr" || strucLn.split(" ")[0].toLowerCase() == "djnz") {
 				strucLn = strucLn.replace(sym, "*")
 			} else {
 				strucLn = strucLn.replace(sym, "**")
@@ -206,12 +259,14 @@ function parse() {
 					let dt = parseInt(noSpaceLine.slice(charID+off, charID+off + 2), 16)
 					if (Number.isNaN(dt)) {
 						dt = parseInt(noSpaceLine.slice(charID+off + 1, charID+off + 3), 16)
+						console.log(strucLn)
+						console.log(noSpaceLine.slice(charID+off + 1, charID+off + 3))
 					}
 					if (Number.isNaN(dt)) {
 						continue
 					}
 					bytes.push(dt)
-					off++
+					off += 2
 					continue
 				}
 			}
@@ -282,7 +337,7 @@ function parse() {
 			//changed
 			let thisLinePosition = bytePositions[idx]
 			let arg0 = newln.split(" ")[0].toLowerCase()
-			if (arg0 == "jr") {
+			if (arg0 == "jr" || arg0 == "djnz") {
 				newbyte = (newbyte) % 256
 				writeBufferByte(calcRel(thisLinePosition, newbyte), thisLinePosition + 1)
 			} else {

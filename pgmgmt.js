@@ -560,10 +560,23 @@ function readF(e) {
 	let reader = new FileReader()
 	reader.onload = function() {
 		let d = reader.result
+		let val = up.value
+		up.value = ""
 		if (rfmode == "editor") {
 			updateEditor(d)
 		} else if (rfmode == "cfg") {
 			setCfg(JSON.parse(d))
+		} else if (rfmode == "proj-file") {
+			let fpathArgs = val.split('\\')
+			let fname = fpathArgs[fpathArgs.length-1]
+			addFileFull(fname, d)
+		} else if (rfmode == "load-proj") {
+			try {
+				setNewFileBuffer(JSON.parse(d))
+			} catch(e) {
+				throwFileLoadException()
+				return
+			}
 		} else {
 			sys.ports[modifyBuffer].cBuffer = new Uint8Array(d)
 			if (callbackFunc[0] == "click-step")
@@ -574,7 +587,7 @@ function readF(e) {
 
 	}
 	
-	if (rfmode == "editor" || rfmode == "cfg") {
+	if (rfmode != "flashROM") {
 		reader.readAsText(input.files[0])
 	} else {
 		reader.readAsArrayBuffer(input.files[0])
@@ -884,6 +897,8 @@ window.onkeydown = function(e) {
 
 window.onkeyup = function(e) {
 	localStorage['cont'] = editor.getValue()
+	if (cEditing != null)
+		cFiles[cEditing] = editor.getValue()
 	while (keysDown.indexOf(e.key) > -1)
 		delete keysDown[keysDown.indexOf(e.key)]
 }
@@ -1007,3 +1022,7 @@ gotoValue.addEventListener('keydown', function(e) {
 })
 
 registers16.SP.value = "FFFF"
+
+window.onload = function() {
+	initFiles()
+}
