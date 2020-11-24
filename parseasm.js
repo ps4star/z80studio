@@ -81,24 +81,28 @@ var bytePositions = {}
 
 let isRawDiff = false
 
+function extractStrFromLine(l) {
+	let nameSection = l.split(" ").slice(1).join(" ")
+	let fname = null
+	let c = 1
+	while (c < nameSection.length) {
+		let char = nameSection[c].replace('"', "'")
+		if (char == "'") {
+			break
+		}
+		fname += char
+		c++
+	}
+	return fname
+}
+
 function grabSymbols() {
 	//de-ref incs
 	for (let i = 0; i < parseState.lines.length; i++) {
 		let line = parseState.lines[i]
 		if (line.split(" ")[0].toLowerCase() == ".inc") {
-
-			let nameSection = line.split(" ").slice(1).join(" ")
-			let fname = ""
-			let c = 1
 			if (nameSection.charAt(0).replace('"', "'") == "'") {
-				while (c < nameSection.length) {
-					let char = nameSection[c].replace('"', "'")
-					if (char == "'") {
-						break
-					}
-					fname += char
-					c++
-				}
+				let fname = extractStrFromLine(line)
 
 				if (Object.keys(cFiles).indexOf(fname) > -1) {
 					parseState.lines[i] = ""
@@ -110,6 +114,22 @@ function grabSymbols() {
 
 			} else {
 				exitWith(".inc syntax error. Must use quotation marks around file name.")
+				return
+			}
+		} else if (line.split(" ")[0].toLowerCase() == ".template") {
+			if (nameSection.charAt(0).replace('"', "'") == "'") {
+				let fname = extractStrFromLine(line)
+
+				if (Object.keys(templates).indexOf(fname) > -1) {
+					parseState.lines[i] = ""
+					parseState.lines.splice(i, 0, templates[fname].split("\n"))
+					parseState.lines = parseState.lines.flat()
+				} else {
+					exitWith("Unknown template " + fname + ".")
+				}
+
+			} else {
+				exitWith(".template syntax error. Must use quotation marks around template name.")
 				return
 			}
 		} else if (line.split(" ")[0].toLowerCase() == ".binc" || line.split(" ")[0].toLowerCase() == ".incbin") {
