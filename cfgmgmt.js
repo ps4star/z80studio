@@ -165,7 +165,7 @@ function dumpPortBuffer(port) {
 		
 		//make volume a bit lower
 		let gainNode = audioCtx.createGain()
-		gainNode.gain.value = 0.5
+		gainNode.gain.value = 0.35
 		gainNode.connect(audioCtx.destination)
 
 		//plays audio from buffer
