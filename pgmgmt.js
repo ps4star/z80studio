@@ -841,23 +841,24 @@ editor.setOption("showPrintMargin", false)
 editor.session.setUseWrapMode(true)
 
 const defStr = `.cfg 00.type audio
+
 .define @port_sound $00
 
 jp _main
 
 _PlayWhiteNoise:
-	push bc
-r1:
-    ld a, r
-    out (@port_sound), a
-    djnz r1
-    pop bc
-    djnz _PlayWhiteNoise
-    ret
+	ld a, r
+	out (@port_sound), a
+	djnz _PlayWhiteNoise
+	dec c
+	ret z
+	ld b, $FF
+	jp _PlayWhiteNoise
 
 _main:
 	ld b, $FF
-    call _PlayWhiteNoise`
+	ld c, $FF
+	call _PlayWhiteNoise`
 
 if (localStorage['cont'] != 'undefined' && typeof localStorage['cont'] !== 'undefined') {
 	updateEditor(localStorage['cont'])
