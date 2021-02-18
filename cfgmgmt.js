@@ -162,6 +162,11 @@ function dumpPortBuffer(port) {
 	} else if (portData.type == "audio") {
 		//init obj
 		audioCtx = new AudioContext({sampleRate: 88200})
+		
+		//make volume a bit lower
+		let gainNode = audioCtx.createGain()
+		gainNode.gain.value = 0.5
+		gainNode.connect(audioCtx.destination)
 
 		//plays audio from buffer
 
@@ -179,7 +184,7 @@ function dumpPortBuffer(port) {
 		let src = audioCtx.createBufferSource()
 
 		src.buffer = audioBuffer
-		src.connect(audioCtx.destination)
+		src.connect(gainNode)
 		src.start()
 	}
 	sys.ports[port].cBuffer = []
