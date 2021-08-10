@@ -1019,7 +1019,7 @@ for (let row = 0; row < 16; row++) {
 makeOverwriteWord(gotoValue)
 
 //sets goto button to update RAM table when clicked
-gotoButton.onclick = () => {
+gotoButton.onmousedown = () => {
 	clearRAMcellHighlight()
 	locationContainer.innerHTML = gotoValue.value.slice(0, 2)
 

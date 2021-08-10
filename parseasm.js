@@ -510,7 +510,7 @@ goButton.onclick = () => {
 
 let flag
 
-stepButton.onclick = () => {
+stepButton.onmousedown = () => {
 
 	editor.setReadOnly(true)
 

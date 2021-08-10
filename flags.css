@@ -8,6 +8,8 @@
   margin: 0;
 
 	font-family: "Monaco";
+
+  outline: none;
 }
 
 body {
@@ -97,17 +99,8 @@ input[type=text] {
 }
 
 .tooltip .tooltiptext {
-  visibility: hidden;
-  font-size: 12px;
-  width: 120px;
-  background-color: white;
-  color: #000;
-  text-align: center;
-  border: 1px solid black;
- 
-  position: absolute;
-  top: 8px;
-  z-index: 1;
+  display: none;
+  pointer-events: none;
 }
 
 .tooltip:hover .tooltiptext {
@@ -132,9 +125,9 @@ input[type=text] {
   flex-flow: column nowrap;
 
   border: 1px solid black;
-  row-gap: 12px;
-  overflow: scroll;
-  overflow-x: hidden;
+  row-gap: 24px;
+
+  overflow: hidden;
 }
 
 #more-menu button {
@@ -168,7 +161,7 @@ input[type=text] {
   grid-template-rows: repeat(15, 11%);
   justify-items: center;
   row-gap: 5px;
-  overflow-y: scroll;
+  overflow-y: hidden;
 }
 
 .flist-grid {

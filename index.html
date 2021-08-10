@@ -8,29 +8,29 @@
         <input type="file" style="position: fixed; top: -100em;" id="upload-diag" onchange="readF(event);" />
         <div class="cover-screen" id="s-cover">
             <div class="smenubox" id="more-menu">
-                <button style="position: absolute; left: 91%; top: 1%; width: 7.5%; height: 7.5%;" onclick="closeMoreMenu();">X</button>
+                <button style="position: absolute; left: 91%; top: 1%; width: 7.5%; height: 7.5%;" onmousedown="closeMoreMenu();">X</button>
                 <h1>HELP</h1>
-                <button style="color: green;" onclick="openClrhome();">Z80 Instruction Set</button>
+                <button style="color: green;" onmousedown="openClrhome();">Z80 Instruction Set</button>
             </div>
         </div>
         <div class="cover-screen" id="s-cover-files">
             <div class="smenubox" id="files-menu">
-                <button style="position: absolute; left: 91%; top: 1%; width: 7.5%; height: 7.5%; font-size: 24px;" onclick="closeFilesMenu();">X</button>
+                <button style="position: absolute; left: 91%; top: 1%; width: 7.5%; height: 7.5%; font-size: 24px;" onmousedown="closeFilesMenu();">X</button>
                 <h1>FILES</h1>
                 <div class="tbarc">
-                    <button class="fo-button" style="color: black;" onclick="putBlankFile()">New File</button><button class="fo-button" style="color: black;" onclick="putEditor()">Add Editor</button>
-                    <button class="fo-button" style="color: green;" onclick="putLoadedFile()">Load File</button><button class="fo-button" style="color: red;" onclick="saveFileBuffer()">Save Proj</button>
-                    <button class="fo-button" style="color: blue;" onclick="loadFileBuffer()">Load Proj</button>
+                    <button class="fo-button" style="color: black;" onmousedown="putBlankFile()">New File</button><button class="fo-button" style="color: black;" onmousedown="putEditor()">Add Editor</button>
+                    <button class="fo-button" style="color: green;" onmousedown="putLoadedFile()">Load File</button><button class="fo-button" style="color: red;" onmousedown="saveFileBuffer()">Save Proj</button>
+                    <button class="fo-button" style="color: blue;" onmousedown="loadFileBuffer()">Load Proj</button>
                 </div>
                 <div class="flist-grid" id="files-list"></div>
             </div>
         </div>
         <div id="toolbar">
-            <button class="tooltip" id="go-button" style="color: green;">Go<span class="tooltiptext">Hotkey: Alt+Shift+G</span></button>
-            <button class="tooltip" id="step-button" style="color: blue;">Step<span class="tooltiptext">Hotkey: Alt+Shift+S</span></button>
-            <button class="tooltip" id="stop-button" style="color: red;">Stop<span class="tooltiptext">Hotkey: Alt+Shift+X</span></button>
-            <button class="tooltip" id="files-button" style="color: purple;" onclick="popupFilesMenu()">Files<span class="tooltiptext">Hotkey: Alt+Shift+F</span></button>
-            <button class="tooltip" id="help-button" style="color: grey;" onclick="document.getElementById('stop-button').click(); popupMoreMenu();">...<span class="tooltiptext">Hotkey: Alt+Shift+H</span></button>
+            <button class="tooltip" id="go-button" style="color: green;">Go</button>
+            <button class="tooltip" id="step-button" style="color: blue;">Step</button>
+            <button class="tooltip" id="stop-button" style="color: red;">Stop</button>
+            <button class="tooltip" id="files-button" style="color: purple;" onmousedown="popupFilesMenu()">Files</button>
+            <button class="tooltip" id="help-button" style="color: grey;" onmousedown="document.getElementById('stop-button').click(); popupMoreMenu();">...<span class="tooltiptext">Hotkey: Alt+Shift+H</span></button>
         </div>
         <div id="main-container">
             <div id="ace-editor"></div>
@@ -443,7 +443,6 @@
                 </div>
             </div>
         </div>
-        <script src="./templates.js" type="text/javascript"></script>
         <script src="./ace/ace.js" type="text/javascript"></script>
         <script src="./ins.js" type="text/javascript"></script>
         <script src="./pgmgmt.js" type="text/javascript"></script>
