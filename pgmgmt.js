@@ -65,12 +65,12 @@ function handleSignedUint8(n) {
 	return n
 }
 
-var legalByteKeys = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"]
-var legalBitKeys = ["0","1"]
-
-var cHighlight = [0, 0]
+const legalByteKeys = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F"]
+const legalBitKeys = ["0","1"]
 
 const RAMsize = 65536
+
+var cHighlight = [0, 0]
 
 var parsedINS = {}
 
@@ -595,9 +595,11 @@ function readF(e) {
 }
 
 function makeOverwriteByte(target, cID) {
-	target.onclick = function() {
-		this.selectionStart = 0
-		this.selectionEnd = 0
+	target.onmousedown = function() {
+		setTimeout(() => {
+			this.selectionStart = 0
+			this.selectionEnd = 0
+		}, 0)
 	}
 	target.onfocus = function() {
 		this.selectionEnd = this.selectionStart
@@ -623,9 +625,11 @@ function makeOverwriteByte(target, cID) {
 }
 
 function makeOverwriteByteRAM(target, nextCell) {
-	target.onclick = function() {
-		this.selectionStart = 0
-		this.selectionEnd = 0
+	target.onmousedown = function() {
+		setTimeout(() => {
+			this.selectionStart = 0
+			this.selectionEnd = 0
+		}, 0)
 	}
 	target.onfocus = function() {
 		this.selectionEnd = this.selectionStart
@@ -648,9 +652,11 @@ function makeOverwriteByteRAM(target, nextCell) {
 }
 
 function makeOverwriteBit(target, cID) {
-	target.onclick = function() {
-		this.selectionStart = 0
-		this.selectionEnd = 0
+	target.onmousedown = function() {
+		setTimeout(() => {
+			this.selectionStart = 0
+			this.selectionEnd = 0
+		}, 0)
 	}
 	target.onfocus = function() {
 		this.selectionEnd = this.selectionStart
@@ -669,9 +675,11 @@ function makeOverwriteBit(target, cID) {
 }
 
 function makeOverwriteWord(target) {
-	target.onclick = function() {
-		this.selectionStart = 0
-		this.selectionEnd = 0
+	target.onmousedown = function() {
+		setTimeout(() => {
+			this.selectionStart = 0
+			this.selectionEnd = 0
+		}, 0)
 	}
 	target.onfocus = function() {
 		this.selectionEnd = this.selectionStart
@@ -695,9 +703,11 @@ function makeOverwriteWord(target) {
 }
 
 function makeOverwriteWordR16(target, i) {
-	target.onclick = function() {
-		this.selectionStart = 0
-		this.selectionEnd = 0
+	target.onmousedown = function() {
+		setTimeout(() => {
+			this.selectionStart = 0
+			this.selectionEnd = 0
+		}, 0)
 	}
 	target.onfocus = function() {
 		this.selectionEnd = this.selectionStart
@@ -737,7 +747,7 @@ function highlightCell(col, row) {
 }
 
 function loadRAMtoTable(requestedCellAddr, mode) {
-	if (mode != undefined && !mode) return
+	if (typeof mode !== 'undefined' && !mode) return
 	requestedCellAddr = requestedCellAddr || null
 	if (requestedCellAddr != null) processViewer.scrollBy(0, 999)
 	for (let row = 0; row < 16; row++) {

@@ -1,5 +1,5 @@
 //instruction sizes and opcodes
-var INS = {
+const INS = {
 	//0X
 	"nop" : [1, 0x00],
 	"ld bc,**"   : [3, 0x01],
